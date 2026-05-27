@@ -86,7 +86,7 @@ def buscar_indice_bcb(codigo_bcb):
         return pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
 
 @st.cache_data
-def obter_historico_salario_minimo():
+def obtener_historico_salario_minimo():
     try:
         url = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1619/dados?formato=json"
         resposta = requests.get(url)
@@ -143,13 +143,11 @@ def calcular_imposto_dinamico(valor_base, ano_competencia, tipo_imposto):
         teto_inss = dados_imposto.get("teto_inss", 908.85)
         if tipo_calculo == "aliquota_unica":
             for faixa in faixas:
-                if valor_base <= faixa["limite"]:
-                    return valor_base * faixa["aliquota"]
+                if valor_base <= faixa["limite"]: return valor_base * faixa["aliquota"]
             return teto_inss
         else:
             for faixa in faixas:
-                if valor_base <= faixa["limite"]:
-                    return (valor_base * faixa["aliquota"]) - faixa["deducao"]
+                if valor_base <= faixa["limite"]: return (valor_base * faixa["aliquota"]) - faixa["deducao"]
             return teto_inss
             
     elif tipo_imposto == "IRRF":
@@ -160,7 +158,7 @@ def calcular_imposto_dinamico(valor_base, ano_competencia, tipo_imposto):
         return 0.0
 
 # =================================================================
-# --- EXPORTADORES PDF/EXCEL ---
+# --- EXPORTADORES PDF/EXCEL MÓDULO BANCÁRIO ---------------------
 # =================================================================
 def gerar_excel_bancario(df_resumo, df_detalhado):
     output = io.BytesIO()
@@ -181,11 +179,11 @@ def gerar_pdf_bancario(resumo_dados, df_detalhado, indice_nome, juros_tipo, taxa
     pdf.cell(0, 10, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", ln=True, align="C")
     pdf.ln(10)
     pdf.set_font("Arial", style="B", size=12)
-    pdf.cell(0, 8, "1. PARÂMETROS DO CONTRATO E ATUALIZAÇÃO", ln=True)
+    pdf.cell(0, 8, "1. PARAMETROS DO CONTRATO E ATUALIZACAO", ln=True)
     pdf.set_font("Arial", size=11)
-    pdf.cell(0, 6, f"Índice: {indice_nome if indice_nome != 'Sem Atualização (Apenas Juros)' else 'Não Aplicado'}", ln=True)
-    pdf.cell(0, 6, f"Método: Juros {juros_tipo} | Taxa: {taxa:.3f}% ao mês", ln=True)
-    pdf.cell(0, 6, f"Período Analisado: {resumo_dados['Dias']} dias", ln=True)
+    pdf.cell(0, 6, f"Indice: {indice_nome if indice_nome != 'Sem Atualização (Apenas Juros)' else 'Nao Aplicado'}", ln=True)
+    pdf.cell(0, 6, f"Metodo: Juros {juros_tipo} | Taxa: {taxa:.3f}% ao mes", ln=True)
+    pdf.cell(0, 6, f"Periodo Analisado: {resumo_dados['Dias']} dias", ln=True)
     pdf.ln(8)
     pdf.set_font("Arial", style="B", size=12)
     pdf.cell(0, 8, "2. RESUMO DOS VALORES", ln=True)
@@ -194,30 +192,78 @@ def gerar_pdf_bancario(resumo_dados, df_detalhado, indice_nome, juros_tipo, taxa
     pdf.cell(0, 6, f"Total de Juros Computados: R$ {resumo_dados['Juros']:.2f}", ln=True)
     pdf.set_font("Arial", style="B", size=11)
     pdf.cell(0, 6, f"VALOR TOTAL RECALCULADO: R$ {resumo_dados['Final']:.2f}", ln=True)
-    pdf.ln(10)
-    pdf.set_font("Arial", style="B", size=12)
-    pdf.cell(0, 8, "3. MEMÓRIA DE CÁLCULO DIÁRIA", ln=True)
-    pdf.ln(2)
-    pdf.set_font("Arial", style="B", size=9)
-    pdf.set_fill_color(240, 240, 240)
-    pdf.cell(25, 6, "Data", border=1, align="C", fill=True)
-    pdf.cell(35, 6, "S. Anterior", border=1, align="R", fill=True)
-    pdf.cell(20, 6, "Corr. (R$)", border=1, align="R", fill=True)
-    pdf.cell(28, 6, "Débitos (-)", border=1, align="R", fill=True)
-    pdf.cell(28, 6, "Créditos (+)", border=1, align="R", fill=True)
-    pdf.cell(35, 6, "S. Final Dia", border=1, align="R", fill=True)
-    pdf.ln()
-    pdf.set_font("Arial", size=8)
-    for _, row in df_detalhado.iterrows():
-        pdf.cell(25, 5, str(row["Data"]), border=1, align="C")
-        pdf.cell(35, 5, f"{row['Saldo Anterior']:.2f}", border=1, align="R")
-        pdf.cell(20, 5, f"{row['Correção (R$)']:.2f}", border=1, align="R")
-        pdf.cell(28, 5, f"{row['Débitos (R$)']:.2f}", border=1, align="R")
-        pdf.cell(28, 5, f"{row['Créditos (R$)']:.2f}", border=1, align="R")
-        pdf.cell(35, 5, f"{row['Saldo Final Dia']:.2f}", border=1, align="R")
-        pdf.ln()
     return bytes(pdf.output())
 
+# =================================================================
+# --- EXPORTADORES PDF/EXCEL MÓDULO CÍVEL (TJ PADRÃO) -------------
+# =================================================================
+def gerar_excel_civel(info_calculo):
+    output = io.BytesIO()
+    df_info = pd.DataFrame([{"Parametro": k, "Valor": v} for k, v in info_calculo.items()])
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_info.to_excel(writer, sheet_name='Memoria Atualizacao', index=False)
+    return output.getvalue()
+
+def gerar_pdf_civel(info):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", style="B", size=16)
+    pdf.set_text_color(0, 64, 128)
+    pdf.cell(0, 10, "TOLARIS CALC - MEMORIA DE ATUALIZACAO CIVEL", ln=True, align="C")
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", style="I", size=10)
+    pdf.cell(0, 6, f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", ln=True, align="C")
+    pdf.ln(8)
+    
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.set_text_color(0, 64, 128)
+    pdf.cell(0, 8, "1. PARAMETROS DO CALCULO", ln=True)
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", size=10)
+    
+    pdf.cell(95, 6, f"Valor Historico Base: {info['Valor Original']}", border=0)
+    pdf.cell(95, 6, f"Indice de Correcao: {info['Indice']}", border=0, ln=True)
+    pdf.cell(95, 6, f"Termo Inicial Correcao: {info['Data Vencimento']}", border=0)
+    pdf.cell(95, 6, f"Termo Inicial Juros: {info['Data Juros']}", border=0, ln=True)
+    pdf.cell(0, 6, f"Data do Fechamento do Calculo: {info['Data Calculo']}", border=0, ln=True)
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.set_text_color(0, 64, 128)
+    pdf.cell(0, 8, "2. DEMONSTRATIVO DE VALORES LIQUIDADOS", ln=True)
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", size=11)
+    
+    pdf.cell(130, 6, "Principal Corrigido Monetariamente:", border=0)
+    pdf.cell(50, 6, info['Principal Corrigido'], border=0, align="R", ln=True)
+    pdf.cell(130, 6, "Juros de Mora Computados no Periodo:", border=0)
+    pdf.cell(50, 6, info['Juros de Mora'], border=0, align="R", ln=True)
+    
+    pdf.set_font("Arial", style="B", size=11)
+    pdf.set_fill_color(240, 245, 250)
+    pdf.cell(130, 7, " SUB-TOTAL ATUALIZADO (Principal + Juros):", border=1, fill=True)
+    pdf.cell(50, 7, f"{info['Subtotal']} ", border=1, align="R", fill=True, ln=True)
+    pdf.set_font("Arial", size=11)
+    
+    pdf.cell(130, 6, "Multa por Inadimplemento Art. 523, par. 1o CPC (10%):", border=0)
+    pdf.cell(50, 6, info['Multa Art. 523'], border=0, align="R", ln=True)
+    pdf.cell(130, 6, "Honorarios de Execucao Art. 523, par. 1o CPC (10%):", border=0)
+    pdf.cell(50, 6, info['Honorarios Art. 523'], border=0, align="R", ln=True)
+    pdf.cell(130, 6, f"Honorarios Advocaticios Ordinarios ({info['Perc_Hon']}%):", border=0)
+    pdf.cell(50, 6, info['Honorarios Comuns'], border=0, align="R", ln=True)
+    
+    pdf.ln(4)
+    pdf.set_font("Arial", style="B", size=13)
+    pdf.set_fill_color(230, 240, 230)
+    pdf.set_text_color(0, 100, 0)
+    pdf.cell(130, 9, " TOTAL GERAL EXEQUENDO DEVIDO:", border=1, fill=True)
+    pdf.cell(50, 9, f"{info['Total Devido']} ", border=1, align="R", fill=True, ln=True)
+    
+    return bytes(pdf.output())
+
+# =================================================================
+# --- EXPORTADORES PDF/EXCEL MÓDULO TRABALHISTA -------------------
+# =================================================================
 def gerar_excel_trabalhista(df_rescisao, info_contrato, totais):
     output = io.BytesIO()
     df_info = pd.DataFrame([
@@ -228,9 +274,7 @@ def gerar_excel_trabalhista(df_rescisao, info_contrato, totais):
         {"Parametro": "Base Rescisao", "Valor": f"R$ {info_contrato['remun_rescisoria']:.2f}"},
         {"Parametro": "Total de Deducoes", "Valor": f"R$ {totais['deducoes']:.2f}"},
         {"Parametro": "Valores Ja Pagos", "Valor": f"R$ {info_contrato['valores_pagos']:.2f}"},
-        {"Parametro": "Liquido a Receber", "Valor": f"R$ {totais['liquido']:.2f}"},
-        {"Parametro": "Honorarios Contratuais", "Valor": f"R$ {totais['hon_contratuais']:.2f}"},
-        {"Parametro": "Honorarios Sucumbenciais", "Valor": f"R$ {totais['hon_sucumbenciais']:.2f}"}
+        {"Parametro": "Liquido a Receber", "Valor": f"R$ {totais['liquido']:.2f}"}
     ])
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_info.to_excel(writer, sheet_name='Parametros', index=False)
@@ -301,140 +345,11 @@ def gerar_pdf_trabalhista(df_rescisao, info_contrato, totais):
     pdf.set_font("Arial", style="B", size=12)
     pdf.cell(160, 8, "CREDITO LIQUIDO DO TRABALHADOR:", border=0, align="R")
     pdf.cell(30, 8, f"R$ {totais['liquido']:.2f}", border=0, align="R", ln=True)
-    pdf.set_text_color(0, 0, 0)
-    
-    pdf.ln(6)
-    pdf.set_font("Arial", style="B", size=12)
-    pdf.set_text_color(0, 64, 128)
-    pdf.cell(0, 8, "3. MULTAS, CONTA VINCULADA E HONORARIOS", ln=True)
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", size=10)
-    
-    pdf.cell(0, 6, f"Saldo Estimado FGTS (8%): R$ {totais['fgts_deposito']:.2f}", border=0, ln=True)
-    pdf.cell(0, 6, f"Multa Rescisoria (40% FGTS): R$ {totais['fgts_multa']:.2f}", border=0, ln=True)
-    pdf.cell(0, 6, f"Multa do Art. 477 da CLT: R$ {totais['multa_477']:.2f}", border=0, ln=True)
-    if info_contrato['multa_467']:
-        pdf.cell(0, 6, f"Multa do Art. 467 da CLT (50% incontroversas): Aplicada no demonstrativo", border=0, ln=True)
-    
-    pdf.ln(4)
-    if totais['hon_sucumbenciais'] > 0 or totais['hon_contratuais'] > 0:
-        pdf.set_font("Arial", style="B", size=10)
-        pdf.cell(0, 6, "Demonstrativo de Honorarios Advocaticios:", border=0, ln=True)
-        pdf.set_font("Arial", size=10)
-        if totais['hon_sucumbenciais'] > 0:
-            pdf.cell(0, 6, f"- Honorarios Sucumbenciais (Base Bruta): R$ {totais['hon_sucumbenciais']:.2f}", border=0, ln=True)
-        if totais['hon_contratuais'] > 0:
-            pdf.cell(0, 6, f"- Honorarios Contratuais (Base Liquida): R$ {totais['hon_contratuais']:.2f}", border=0, ln=True)
-
     return bytes(pdf.output())
 
 # =================================================================
-# --- MÓDULOS CÍVEIS ---
+# --- TELAS ESPECÍFICAS DAS FERRAMENTAS CÍVEIS --------------------
 # =================================================================
-def modulo_cheque_especial():
-    st.header("🕵️ Auditoria de Cheque Especial e Contratos")
-    
-    if 'reset_contador' not in st.session_state:
-        st.session_state.reset_contador = 0
-    def limpar_tabela():
-        st.session_state.reset_contador += 1
-    
-    CODIGOS_BCB = {"IGP-M": 189, "IPCA": 433, "INPC": 188, "INCC": 192}
-
-    with st.sidebar:
-        data_inicial = st.date_input("Data Inicial", value=None, min_value=date(1980, 1, 1), format="DD/MM/YYYY")
-        data_final = st.date_input("Data Final", value=None, min_value=date(1980, 1, 1), format="DD/MM/YYYY")
-        saldo_inicial = st.number_input("Saldo Inicial Negativo (R$)", value=0.00, step=100.0)
-        st.markdown("---")
-        opcoes_indices = ["Sem Atualização (Apenas Juros)"] + list(CODIGOS_BCB.keys())
-        indice_escolhido = st.selectbox("Índice de Atualização", opcoes_indices)
-        tipo_juros = st.radio("Método de Juros", ["Compostos", "Simples"])
-        taxa_juros = st.number_input("Taxa de Juros a.m. (%)", value=8.000, format="%.3f")
-
-        if indice_escolhido == "Sem Atualização (Apenas Juros)":
-            df_indices = pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
-        else:
-            codigo_atual = CODIGOS_BCB[indice_escolhido]
-            df_historico_completo = buscar_indice_bcb(codigo_atual)
-            if data_inicial:
-                ano_inicio = str(data_inicial.year)
-                df_filtrado = df_historico_completo[df_historico_completo['Mês/Ano'] >= f"{ano_inicio}-01"].copy() if not df_historico_completo.empty else pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
-            else:
-                df_filtrado = pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
-            df_indices = st.data_editor(df_filtrado, num_rows="dynamic", hide_index=True)
-
-    if not data_inicial or not data_final:
-        st.info("👈 Defina os parâmetros no menu lateral para iniciar.")
-        return
-    if data_inicial > data_final:
-        st.error("⚠️ A Data Inicial não pode ser posterior à Data Final.")
-        return
-
-    dias_totais = (data_final - data_inicial).days
-    datas_iniciais = [(data_inicial + timedelta(days=i)) for i in range(dias_totais + 1)]
-    df_lancamentos_iniciais = pd.DataFrame({"Data": datas_iniciais, "Débitos (-)": [0.00 for _ in range(len(datas_iniciais))], "Créditos (+)": [0.00 for _ in range(len(datas_iniciais))]})
-
-    df_lancamentos = st.data_editor(
-        df_lancamentos_iniciais, key=f"tabela_lancamentos_{st.session_state.reset_contador}", num_rows="dynamic", use_container_width=True, hide_index=True,
-        column_config={"Data": st.column_config.DateColumn("Data", min_value=date(1980, 1, 1), format="DD/MM/YYYY"), "Débitos (-)": st.column_config.NumberColumn("Débitos (-)", format="R$ %.2f"), "Créditos (+)": st.column_config.NumberColumn("Créditos (+)", format="R$ %.2f")}
-    )
-
-    col_btn1, col_btn2 = st.columns([3, 1])
-    with col_btn1:
-        btn_processar = st.button("PROCESSAR REVISÃO BANCÁRIA", type="primary", use_container_width=True)
-    with col_btn2:
-        st.button("🧹 Limpar Tabela", on_click=limpar_tabela, use_container_width=True)
-
-    if btn_processar:
-        dic_indices = {row["Mês/Ano"]: Decimal(str(row["Índice (%)"] / 100)) for _, row in df_indices.iterrows()}
-        dic_lancamentos = {}
-        for _, row in df_lancamentos.iterrows():
-            try:
-                data_str = pd.to_datetime(row["Data"], format="%d/%m/%Y").strftime("%Y-%m-%d")
-                dic_lancamentos[data_str] = {"debitos": Decimal(str(row["Débitos (-)"])), "creditos": Decimal(str(row["Créditos (+)"]))}
-            except: pass
-
-        memoria_calculo = []
-        saldo_atual = Decimal(str(saldo_inicial))
-        data_atual = data_inicial
-        col_taxa_nome = "Taxa de Atualização (%)" if indice_escolhido == "Sem Atualização (Apenas Juros)" else f"Taxa {indice_escolhido} (%)"
-        
-        while data_atual <= data_final:
-            str_data = data_atual.strftime("%Y-%m-%d")
-            mes_ano_anterior = (data_atual.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
-            saldo_inicio_dia = saldo_atual
-            valor_correcao, percentual_aplicado = Decimal('0.00'), Decimal('0.00')
-            
-            if data_atual.day == 1 and mes_ano_anterior in dic_indices:
-                percentual_aplicado = dic_indices[mes_ano_anterior]
-                valor_correcao = saldo_atual * percentual_aplicado
-                saldo_atual += valor_correcao
-                
-            lancamentos_dia = dic_lancamentos.get(str_data, {"debitos": Decimal('0.00'), "creditos": Decimal('0.00')})
-            saldo_atual = saldo_atual + lancamentos_dia["debitos"] - lancamentos_dia["creditos"]
-            
-            memoria_calculo.append({"Data": data_atual.strftime("%d/%m/%Y"), "Saldo Anterior": float(saldo_inicio_dia), col_taxa_nome: float(percentual_aplicado * 100), "Correção (R$)": float(valor_correcao), "Débitos (R$)": float(lancamentos_dia["debitos"]), "Créditos (R$)": float(lancamentos_dia["creditos"]), "Saldo Final Dia": float(saldo_atual)})
-            data_atual += timedelta(days=1)
-        
-        taxa_mensal_dec = Decimal(str(taxa_juros / 100))
-        taxa_periodo = (1 + taxa_mensal_dec) ** (Decimal(dias_totais) / Decimal(30)) - 1 if tipo_juros == "Compostos" else taxa_mensal_dec * (Decimal(dias_totais) / Decimal(30))
-        valor_juros = saldo_atual * taxa_periodo
-        saldo_final_absoluto = saldo_atual + valor_juros
-        
-        st.markdown("---")
-        st.subheader("Resumo da Dívida Recalculada")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Saldo Original Acumulado", f"R$ {float(saldo_atual):,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        c2.metric(f"Juros ({tipo_juros})", f"R$ {float(valor_juros):,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        c3.metric("Dívida Final", f"R$ {float(saldo_final_absoluto):,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        
-        resumo_dict = {"Original": float(saldo_atual), "Juros": float(valor_juros), "Final": float(saldo_final_absoluto), "Dias": dias_totais}
-        df_mem = pd.DataFrame(memoria_calculo)
-        
-        ex1, ex2 = st.columns(2)
-        with ex1: st.download_button("📊 Baixar Planilha (Excel)", data=gerar_excel_bancario(pd.DataFrame([resumo_dict]), df_mem), file_name="Revisao_Bancaria.xlsx", use_container_width=True)
-        with ex2: st.download_button("📄 Baixar PDF Pericial", data=gerar_pdf_bancario(resumo_dict, df_mem, indice_escolhido, tipo_juros, taxa_juros), file_name="Laudo_Bancario.pdf", use_container_width=True)
-
 def modulo_civel_atualizacao():
     st.header("📈 Atualização de Débitos Judiciais (Padrão TJ)")
     st.write("Cálculo para cumprimento de sentença cível. Aplica correção monetária, juros moratórios e honorários advocatícios.")
@@ -464,50 +379,45 @@ def modulo_civel_atualizacao():
         st.subheader("3. Acréscimos Legais e Honorários")
         multa_523 = st.checkbox("Multa do Art. 523 do CPC (10%)", value=False)
         hon_523 = st.checkbox("Honorários do Art. 523 do CPC (10%)", value=False)
-        hon_comum = st.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0, help="Honorários de sucumbência ou contratuais incidentes sobre o montante atualizado.")
+        hon_comum = st.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0)
 
     if not data_vencimento or not data_juros or valor_original <= 0:
         st.info("👈 Preencha o valor histórico e as datas no menu lateral para iniciar.")
         return
-        
     if data_vencimento > data_calculo or data_juros > data_calculo:
-        st.error("⚠️ Erro: As datas de vencimento/citação devem ser anteriores à data do cálculo.")
+        st.error("⚠️ As datas devem ser anteriores à data de fechamento do cálculo.")
         return
 
     with st.spinner(f"Processando matriz {indice_escolhido} do Banco Central..."):
         codigo_atual = CODIGOS_BCB[indice_escolhido]
         df_indice_completo = buscar_indice_bcb(codigo_atual)
 
-    # Lógica de Correção Monetária
+    # Lógica de Correção
     valor_corrigido = valor_original
     fator_acumulado = 1.0
-    
     str_venc = data_vencimento.strftime('%Y-%m')
     str_calc = data_calculo.strftime('%Y-%m')
     
     if not df_indice_completo.empty:
         mask = (df_indice_completo['Mês/Ano'] >= str_venc) & (df_indice_completo['Mês/Ano'] < str_calc)
         df_fase = df_indice_completo[mask]
-        
         if indice_escolhido == "SELIC":
             soma_selic = df_fase['Índice (%)'].sum() / 100
             valor_corrigido = valor_original + (valor_original * soma_selic)
         else:
-            for _, row in df_fase.iterrows():
-                fator_acumulado *= (1 + (row['Índice (%)'] / 100))
+            for _, row in df_fase.iterrows(): fator_acumulado *= (1 + (row['Índice (%)'] / 100))
             valor_corrigido = valor_original * fator_acumulado
 
-    # Lógica de Juros de Mora
+    # Lógica de Juros
     valor_juros_mora = 0.0
     if indice_escolhido != "SELIC" and aplicar_juros:
         dias_juros = (data_calculo - data_juros).days
         if dias_juros > 0:
-            meses_juros = dias_juros / 30
-            valor_juros_mora = valor_corrigido * (meses_juros * (perc_juros / 100))
+            valor_juros_mora = valor_corrigido * ((dias_juros / 30) * (perc_juros / 100))
             
     subtotal_atualizado = valor_corrigido + valor_juros_mora
 
-    # Penalidades e Honorários
+    # Acréscimos
     valor_multa_523 = subtotal_atualizado * 0.10 if multa_523 else 0.0
     valor_hon_523 = subtotal_atualizado * 0.10 if hon_523 else 0.0
     valor_hon_comum = subtotal_atualizado * (hon_comum / 100) if hon_comum > 0 else 0.0
@@ -515,7 +425,7 @@ def modulo_civel_atualizacao():
     total_acrescimos = valor_multa_523 + valor_hon_523 + valor_hon_comum
     total_devido = subtotal_atualizado + total_acrescimos
 
-    # Interface Visual
+    # Interface Principal
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.markdown(f"""
@@ -529,7 +439,6 @@ def modulo_civel_atualizacao():
             <h5 style="color: #333; margin: 0;">Subtotal Atualizado: R$ {subtotal_atualizado:,.2f}</h5>
         </div>
         """, unsafe_allow_html=True)
-        
     with col_t2:
         st.markdown(f"""
         <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
@@ -542,10 +451,32 @@ def modulo_civel_atualizacao():
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown(f"### ⚖️ TOTAL GERAL DEVIDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
+    st.markdown(f"### ⚖️ TOTAL GERAL EXEQUENDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
+
+    # IMPLEMENTAÇÃO SOLICITADA: Relatórios do Módulo Cível
+    st.subheader("📥 Exportar Relatório de Atualização Monetária Cível")
+    dic_dados_civel = {
+        "Valor Original": f"R$ {valor_original:,.2f}",
+        "Data Vencimento": data_vencimento.strftime("%d/%m/%Y"),
+        "Data Juros": data_juros.strftime("%d/%m/%Y"),
+        "Data Calculo": data_calculo.strftime("%d/%m/%Y"),
+        "Indice": indice_escolhido,
+        "Principal Corrigido": f"R$ {valor_corrigido:,.2f}",
+        "Juros de Mora": f"R$ {valor_juros_mora:,.2f}",
+        "Subtotal": f"R$ {subtotal_atualizado:,.2f}",
+        "Multa Art. 523": f"R$ {valor_multa_523:,.2f}",
+        "Honorarios Art. 523": f"R$ {valor_hon_523:,.2f}",
+        "Perc_Hon": str(hon_comum),
+        "Honorarios Comuns": f"R$ {valor_hon_comum:,.2f}",
+        "Total Devido": f"R$ {total_devido:,.2f}"
+    }
+    
+    cx1, cx2 = st.columns(2)
+    with cx1: st.download_button("📊 Baixar Memória de Cálculo (Excel)", data=gerar_excel_civel(dic_dados_civel), file_name="Atualizacao_Civel.xlsx", use_container_width=True)
+    with cx2: st.download_button("📄 Baixar Relatório de Atualização (PDF)", data=gerar_pdf_civel(dic_dados_civel), file_name="Laudo_Atualizacao_Civel.pdf", use_container_width=True)
 
 # =================================================================
-# --- MÓDULOS TRABALHISTAS ---
+# --- TELAS ESPECÍFICAS DAS FERRAMENTAS TRABALHISTAS --------------
 # =================================================================
 def modulo_trabalhista_rescisao():
     st.header("🧾 Liquidação Expressa (Rescisão e Sentença)")
@@ -559,12 +490,20 @@ def modulo_trabalhista_rescisao():
         data_demissao = st.date_input("Data de Demissão (Último dia)", value=None, format="DD/MM/YYYY")
         salario_base = st.number_input("Salário Base (R$)", value=0.00, step=100.0)
         
-        selecao_sm = st.selectbox("S.M. (Base Insalubridade)", list(historico_sm.keys()))
-        salario_minimo = st.number_input("Digite o S.M. (R$)", value=0.00, step=10.0) if selecao_sm == "Outro (Digitar Manualmente)" else historico_sm[selecao_sm]
-        
         st.markdown("---")
         st.subheader("2. Adicionais e Jornada")
         adicional_ocupacional = st.selectbox("Adicionais Ocupacionais", ["Nenhum Adicional", "Insalubridade - Mínimo (10%)", "Insalubridade - Médio (20%)", "Insalubridade - Máximo (40%)", "Periculosidade (30%)"])
+        
+        # FIX UX SOLICITADO: Renderização condicional do Salário Mínimo
+        salario_minimo = 0.0
+        if "Insalubridade" in adicional_ocupacional:
+            selecao_sm = st.selectbox("Ano/Valor do Salário Mínimo (API Banco Central)", list(historico_sm.keys()))
+            if selecao_sm == "Outro (Digitar Manualmente)":
+                salario_minimo = st.number_input("Digite o S.M. (R$)", value=0.00, step=10.0)
+            else:
+                salario_minimo = historico_sm[selecao_sm]
+                st.info(f"Salário Mínimo travado em: **R$ {salario_minimo:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
+        
         he_50 = st.number_input("HE 50% (Média/mês)", value=0.0, step=1.0)
         he_100 = st.number_input("HE 100% (Média/mês)", value=0.0, step=1.0)
         he_noturna = st.number_input("H. Noturnas (Média/mês)", value=0.0, step=1.0)
@@ -585,7 +524,7 @@ def modulo_trabalhista_rescisao():
         hon_sucumbenciais = st.number_input("Honorários Sucumbenciais (%)", value=0.0, step=1.0)
         hon_contratuais = st.number_input("Honorários Contratuais (%)", value=0.0, step=1.0)
 
-    if not data_admissao or not data_demissao or salario_base <= 0 or (selecao_sm == "Outro (Digitar Manualmente)" and salario_minimo <= 0):
+    if not data_admissao or not data_demissao or salario_base <= 0 or ("Insalubridade" in adicional_ocupacional and salario_minimo <= 0):
         st.info("👈 Preencha os campos essenciais na barra lateral para iniciar o cálculo.")
         return
     if data_admissao >= data_demissao:
@@ -643,7 +582,6 @@ def modulo_trabalhista_rescisao():
     desc_inss_salarial = calcular_imposto_dinamico(base_inss, ano_demissao, "INSS")
     desc_inss_13 = calcular_imposto_dinamico(valor_13, ano_demissao, "INSS") if valor_13 > 0 else 0.0
     desc_inss = desc_inss_salarial + desc_inss_13
-    
     desc_irrf = calcular_imposto_dinamico(base_inss - desc_inss_salarial, ano_demissao, "IRRF")
 
     dados = [{"Verba": f"Saldo Salário ({data_demissao.day}d)", "Valor (R$)": valor_saldo, "Tipo": "Provento", "Natureza": "Salarial"}]
@@ -696,12 +634,10 @@ def modulo_trabalhista_adc58():
     with st.sidebar:
         st.subheader("Parâmetros da Condenação")
         valor_original = st.number_input("Valor Histórico (R$)", value=0.00, step=100.0)
-        
         st.markdown("---")
         data_vencimento = st.date_input("Data de Vencimento da Verba", value=None, format="DD/MM/YYYY")
         data_ajuizamento = st.date_input("Data do Ajuizamento da Ação", value=None, format="DD/MM/YYYY")
         data_calculo = st.date_input("Data da Atualização (Hoje)", value=date.today(), format="DD/MM/YYYY")
-        
         st.markdown("---")
         incluir_juros_pre = st.checkbox("Incluir Juros Pré-Judiciais (1% a.m.)", value=False)
 
@@ -721,25 +657,21 @@ def modulo_trabalhista_adc58():
 
     valor_atualizado_ipcae = valor_original
     percentual_acumulado_ipcae = 1.0
-    
     str_vencimento = data_vencimento.strftime('%Y-%m')
     str_ajuizamento = data_ajuizamento.strftime('%Y-%m')
     
     if not df_ipcae_completo.empty:
         mask_ipcae = (df_ipcae_completo['Mês/Ano'] >= str_vencimento) & (df_ipcae_completo['Mês/Ano'] < str_ajuizamento)
         df_ipcae_fase = df_ipcae_completo[mask_ipcae]
-        for _, row in df_ipcae_fase.iterrows():
-            percentual_acumulado_ipcae *= (1 + (row['Índice (%)'] / 100))
+        for _, row in df_ipcae_fase.iterrows(): percentual_acumulado_ipcae *= (1 + (row['Índice (%)'] / 100))
             
     valor_atualizado_ipcae = valor_original * percentual_acumulado_ipcae
-    
     juros_pre_judiciais = 0.0
     if incluir_juros_pre:
         dias_pre = (data_ajuizamento - data_vencimento).days
         juros_pre_judiciais = valor_atualizado_ipcae * ((dias_pre / 30) * 0.01)
         
     subtotal_fase_pre = valor_atualizado_ipcae + juros_pre_judiciais
-
     soma_selic_acumulada = 0.0
     str_calculo = data_calculo.strftime('%Y-%m')
     
@@ -764,7 +696,6 @@ def modulo_trabalhista_adc58():
             <h5 style="color: #333; margin: 0;">Subtotal Ajuizamento: R$ {subtotal_fase_pre:,.2f}</h5>
         </div>
         """, unsafe_allow_html=True)
-        
     with col2:
         st.markdown(f"""
         <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
@@ -780,13 +711,13 @@ def modulo_trabalhista_adc58():
 
     st.markdown(f"### 💰 Dívida Final Atualizada: **R$ {valor_final_absoluto:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
 
-
 # =================================================================
 # --- ROTEAMENTO DE PÁGINAS (SINGLE PAGE APPLICATION) ---
 # =================================================================
 menu = st.session_state.menu_principal
 ferramenta = st.session_state.ferramenta_ativa
 
+# FIX DO MENUS REPETIDOS NA BARRA LATERAL: Removidos dropdowns redundantes
 with st.sidebar:
     if menu != "Início":
         st.button("⬅️ VOLTAR AO INÍCIO", on_click=navegar_para, args=("Início", "Painel"), use_container_width=True)
@@ -833,8 +764,6 @@ elif menu == "Cível":
         modulo_cheque_especial()
     elif ferramenta == "Atualização Monetária (TJ Padrão)":
         modulo_civel_atualizacao()
-    else:
-        st.info("🚧 Módulo em desenvolvimento.")
 
 elif menu == "Trabalhista":
     if ferramenta == "Painel":
