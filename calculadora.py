@@ -85,8 +85,9 @@ def buscar_indice_bcb(codigo_bcb):
     except:
         return pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
 
+# CORRIGIDO: Nome da função de 'obtener_...' para 'obter_...'
 @st.cache_data
-def obtener_historico_salario_minimo():
+def obter_historico_salario_minimo():
     try:
         url = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1619/dados?formato=json"
         resposta = requests.get(url)
@@ -345,6 +346,31 @@ def gerar_pdf_trabalhista(df_rescisao, info_contrato, totais):
     pdf.set_font("Arial", style="B", size=12)
     pdf.cell(160, 8, "CREDITO LIQUIDO DO TRABALHADOR:", border=0, align="R")
     pdf.cell(30, 8, f"R$ {totais['liquido']:.2f}", border=0, align="R", ln=True)
+    pdf.set_text_color(0, 0, 0)
+    
+    pdf.ln(6)
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.set_text_color(0, 64, 128)
+    pdf.cell(0, 8, "3. MULTAS, CONTA VINCULADA E HONORARIOS", ln=True)
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", size=10)
+    
+    pdf.cell(0, 6, f"Saldo Estimado FGTS (8%): R$ {totais['fgts_deposito']:.2f}", border=0, ln=True)
+    pdf.cell(0, 6, f"Multa Rescisoria (40% FGTS): R$ {totais['fgts_multa']:.2f}", border=0, ln=True)
+    pdf.cell(0, 6, f"Multa do Art. 477 da CLT: R$ {totais['multa_477']:.2f}", border=0, ln=True)
+    if info_contrato['multa_467']:
+        pdf.cell(0, 6, f"Multa do Art. 467 da CLT (50% incontroversas): Aplicada no demonstrativo", border=0, ln=True)
+    
+    pdf.ln(4)
+    if totais['hon_sucumbenciais'] > 0 or totais['hon_contratuais'] > 0:
+        pdf.set_font("Arial", style="B", size=10)
+        pdf.cell(0, 6, "Demonstrativo de Honorarios Advocaticios:", border=0, ln=True)
+        pdf.set_font("Arial", size=10)
+        if totais['hon_sucumbenciais'] > 0:
+            pdf.cell(0, 6, f"- Honorarios Sucumbenciais (Base Bruta): R$ {totais['hon_sucumbenciais']:.2f}", border=0, ln=True)
+        if totais['hon_contratuais'] > 0:
+            pdf.cell(0, 6, f"- Honorarios Contratuais (Base Liquida): R$ {totais['hon_contratuais']:.2f}", border=0, ln=True)
+
     return bytes(pdf.output())
 
 # =================================================================
@@ -379,45 +405,50 @@ def modulo_civel_atualizacao():
         st.subheader("3. Acréscimos Legais e Honorários")
         multa_523 = st.checkbox("Multa do Art. 523 do CPC (10%)", value=False)
         hon_523 = st.checkbox("Honorários do Art. 523 do CPC (10%)", value=False)
-        hon_comum = st.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0)
+        hon_comum = st.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0, help="Honorários de sucumbência ou contratuais incidentes sobre o montante atualizado.")
 
     if not data_vencimento or not data_juros or valor_original <= 0:
         st.info("👈 Preencha o valor histórico e as datas no menu lateral para iniciar.")
         return
+        
     if data_vencimento > data_calculo or data_juros > data_calculo:
-        st.error("⚠️ As datas devem ser anteriores à data de fechamento do cálculo.")
+        st.error("⚠️ Erro: As datas de vencimento/citação devem ser anteriores à data do cálculo.")
         return
 
     with st.spinner(f"Processando matriz {indice_escolhido} do Banco Central..."):
         codigo_atual = CODIGOS_BCB[indice_escolhido]
         df_indice_completo = buscar_indice_bcb(codigo_atual)
 
-    # Lógica de Correção
+    # Lógica de Correção Monetária
     valor_corrigido = valor_original
     fator_acumulado = 1.0
+    
     str_venc = data_vencimento.strftime('%Y-%m')
     str_calc = data_calculo.strftime('%Y-%m')
     
     if not df_indice_completo.empty:
         mask = (df_indice_completo['Mês/Ano'] >= str_venc) & (df_indice_completo['Mês/Ano'] < str_calc)
         df_fase = df_indice_completo[mask]
+        
         if indice_escolhido == "SELIC":
             soma_selic = df_fase['Índice (%)'].sum() / 100
             valor_corrigido = valor_original + (valor_original * soma_selic)
         else:
-            for _, row in df_fase.iterrows(): fator_acumulado *= (1 + (row['Índice (%)'] / 100))
+            for _, row in df_fase.iterrows():
+                fator_acumulado *= (1 + (row['Índice (%)'] / 100))
             valor_corrigido = valor_original * fator_acumulado
 
-    # Lógica de Juros
+    # Lógica de Juros de Mora
     valor_juros_mora = 0.0
     if indice_escolhido != "SELIC" and aplicar_juros:
         dias_juros = (data_calculo - data_juros).days
         if dias_juros > 0:
-            valor_juros_mora = valor_corrigido * ((dias_juros / 30) * (perc_juros / 100))
+            meses_juros = dias_juros / 30
+            valor_juros_mora = valor_corrigido * (meses_juros * (perc_juros / 100))
             
     subtotal_atualizado = valor_corrigido + valor_juros_mora
 
-    # Acréscimos
+    # Penalidades e Honorários
     valor_multa_523 = subtotal_atualizado * 0.10 if multa_523 else 0.0
     valor_hon_523 = subtotal_atualizado * 0.10 if hon_523 else 0.0
     valor_hon_comum = subtotal_atualizado * (hon_comum / 100) if hon_comum > 0 else 0.0
@@ -425,7 +456,7 @@ def modulo_civel_atualizacao():
     total_acrescimos = valor_multa_523 + valor_hon_523 + valor_hon_comum
     total_devido = subtotal_atualizado + total_acrescimos
 
-    # Interface Principal
+    # Interface Visual
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.markdown(f"""
@@ -439,6 +470,7 @@ def modulo_civel_atualizacao():
             <h5 style="color: #333; margin: 0;">Subtotal Atualizado: R$ {subtotal_atualizado:,.2f}</h5>
         </div>
         """, unsafe_allow_html=True)
+        
     with col_t2:
         st.markdown(f"""
         <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
@@ -451,9 +483,9 @@ def modulo_civel_atualizacao():
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown(f"### ⚖️ TOTAL GERAL EXEQUENDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
+    st.markdown(f"### ⚖️ TOTAL GERAL DEVIDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
 
-    # IMPLEMENTAÇÃO SOLICITADA: Relatórios do Módulo Cível
+    # Relatórios do Módulo Cível
     st.subheader("📥 Exportar Relatório de Atualização Monetária Cível")
     dic_dados_civel = {
         "Valor Original": f"R$ {valor_original:,.2f}",
@@ -717,7 +749,7 @@ def modulo_trabalhista_adc58():
 menu = st.session_state.menu_principal
 ferramenta = st.session_state.ferramenta_ativa
 
-# FIX DO MENUS REPETIDOS NA BARRA LATERAL: Removidos dropdowns redundantes
+# FIX: Remoção dos menus antigos poluídos e botões na barra lateral.
 with st.sidebar:
     if menu != "Início":
         st.button("⬅️ VOLTAR AO INÍCIO", on_click=navegar_para, args=("Início", "Painel"), use_container_width=True)
@@ -755,7 +787,7 @@ elif menu == "Cível":
         st.markdown("""
         <div class="tool-card">
             <h4 style="color: #004080; margin-bottom: 5px;">📈 Atualização Monetária (TJ Padrão)</h4>
-            <p style="color: #666; font-size: 14px;">Módulo para cumprimento de sentença cível. Aplica os índices inflacionários do Banco Central, juros de mora e multas do art. 523 do CPC automaticamente.</p>
+            <p style="color: #666; font-size: 14px;">Módulo para cumprimento de sentença cível. Aplica os índices inflacionários do Banco Central, juros de mora e honorários sucumbenciais ou contratuais automaticamente.</p>
         </div>
         """, unsafe_allow_html=True)
         st.button("Acessar Calculadora", on_click=navegar_para, args=("Cível", "Atualização Monetária (TJ Padrão)"), key="btn_civ_2")
