@@ -1,0 +1,45 @@
+{
+  "2024": {
+    "INSS": {
+      "tipo": "progressivo",
+      "teto_inss": 908.85,
+      "faixas": [
+        {"limite": 1412.00, "aliquota": 0.075, "deducao": 0.00},
+        {"limite": 2666.68, "aliquota": 0.09, "deducao": 21.18},
+        {"limite": 4000.03, "aliquota": 0.12, "deducao": 101.18},
+        {"limite": 7786.02, "aliquota": 0.14, "deducao": 181.18}
+      ]
+    },
+    "IRRF": {
+      "tipo": "progressivo",
+      "faixas": [
+        {"limite": 2259.20, "aliquota": 0.00, "deducao": 0.00},
+        {"limite": 2826.65, "aliquota": 0.075, "deducao": 169.44},
+        {"limite": 3751.05, "aliquota": 0.15, "deducao": 381.44},
+        {"limite": 4664.68, "aliquota": 0.225, "deducao": 662.77},
+        {"limite": 9999999.99, "aliquota": 0.275, "deducao": 896.00}
+      ]
+    }
+  },
+  "2019": {
+    "INSS": {
+      "tipo": "aliquota_unica",
+      "teto_inss": 642.34,
+      "faixas": [
+        {"limite": 1751.81, "aliquota": 0.08, "deducao": 0.00},
+        {"limite": 2919.72, "aliquota": 0.09, "deducao": 0.00},
+        {"limite": 5839.45, "aliquota": 0.11, "deducao": 0.00}
+      ]
+    },
+    "IRRF": {
+      "tipo": "progressivo",
+      "faixas": [
+        {"limite": 1903.98, "aliquota": 0.00, "deducao": 0.00},
+        {"limite": 2826.65, "aliquota": 0.075, "deducao": 142.80},
+        {"limite": 3751.05, "aliquota": 0.15, "deducao": 354.80},
+        {"limite": 4664.68, "aliquota": 0.225, "deducao": 636.13},
+        {"limite": 9999999.99, "aliquota": 0.275, "deducao": 869.36}
+      ]
+    }
+  }
+}
