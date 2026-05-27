@@ -106,7 +106,6 @@ def obter_historico_salario_minimo():
     except:
         return {"2026 - R$ 1.621,00": 1621.00, "2025 - R$ 1.518,00": 1518.00, "2024 - R$ 1.412,00": 1412.00, "Outro (Digitar Manualmente)": 0.00}
 
-# --- NOVO BANCO DE DADOS (JSON) PARA TRIBUTOS ---
 @st.cache_data
 def carregar_tributos_json():
     caminho_arquivo = 'tributos.json'
@@ -119,11 +118,9 @@ def calcular_imposto_dinamico(valor_base, ano_competencia, tipo_imposto):
     db_tributos = carregar_tributos_json()
     ano_str = str(ano_competencia)
     
-    # Validação de segurança: se o ano não existir no JSON, usa o mais recente conhecido ou cai pro fallback
     if not db_tributos or ano_str not in db_tributos:
         ano_str = "2024" if db_tributos and "2024" in db_tributos else None
 
-    # Fallback Hardcoded de segurança caso o arquivo tributos.json não exista na pasta
     if not ano_str:
         if tipo_imposto == "INSS":
             if valor_base <= 1412.00: return valor_base * 0.075
@@ -138,14 +135,12 @@ def calcular_imposto_dinamico(valor_base, ano_competencia, tipo_imposto):
             elif valor_base <= 4664.68: return (valor_base * 0.225) - 662.77
             else: return (valor_base * 0.275) - 896.00
 
-    # Lógica Dinâmica baseada no JSON
     dados_imposto = db_tributos[ano_str][tipo_imposto]
     tipo_calculo = dados_imposto.get("tipo", "progressivo")
     faixas = dados_imposto["faixas"]
     
     if tipo_imposto == "INSS":
         teto_inss = dados_imposto.get("teto_inss", 908.85)
-        
         if tipo_calculo == "aliquota_unica":
             for faixa in faixas:
                 if valor_base <= faixa["limite"]:
@@ -440,6 +435,117 @@ def modulo_cheque_especial():
         with ex1: st.download_button("📊 Baixar Planilha (Excel)", data=gerar_excel_bancario(pd.DataFrame([resumo_dict]), df_mem), file_name="Revisao_Bancaria.xlsx", use_container_width=True)
         with ex2: st.download_button("📄 Baixar PDF Pericial", data=gerar_pdf_bancario(resumo_dict, df_mem, indice_escolhido, tipo_juros, taxa_juros), file_name="Laudo_Bancario.pdf", use_container_width=True)
 
+def modulo_civel_atualizacao():
+    st.header("📈 Atualização de Débitos Judiciais (Padrão TJ)")
+    st.write("Cálculo para cumprimento de sentença cível. Aplica correção monetária, juros moratórios e multas/honorários processuais (Art. 523 CPC).")
+    
+    CODIGOS_BCB = {"INPC": 188, "IPCA-E": 10844, "IGP-M": 189, "SELIC": 4390}
+
+    with st.sidebar:
+        st.subheader("1. Valor e Datas")
+        valor_original = st.number_input("Valor Histórico (R$)", value=0.00, step=100.0)
+        data_vencimento = st.date_input("Data do Vencimento (Termo Inicial da Correção)", value=None, format="DD/MM/YYYY")
+        data_juros = st.date_input("Data da Citação (Termo Inicial dos Juros)", value=None, format="DD/MM/YYYY")
+        data_calculo = st.date_input("Data do Cálculo (Hoje)", value=date.today(), format="DD/MM/YYYY")
+        
+        st.markdown("---")
+        st.subheader("2. Fatores de Atualização")
+        indice_escolhido = st.selectbox("Índice de Correção", list(CODIGOS_BCB.keys()))
+        
+        if indice_escolhido == "SELIC":
+            st.info("⚠️ A Taxa SELIC não cumula com Juros de Mora de 1% a.m., conforme jurisprudência do STJ.")
+            aplicar_juros = False
+            perc_juros = 0.0
+        else:
+            aplicar_juros = st.checkbox("Aplicar Juros de Mora", value=True)
+            perc_juros = st.number_input("Juros ao Mês (%)", value=1.0, step=0.1) if aplicar_juros else 0.0
+            
+        st.markdown("---")
+        st.subheader("3. Acréscimos Legais (Fase de Execução)")
+        multa_523 = st.checkbox("Multa do Art. 523 do CPC (10%)", value=False)
+        hon_523 = st.checkbox("Honorários do Art. 523 do CPC (10%)", value=False)
+
+    if not data_vencimento or not data_juros or valor_original <= 0:
+        st.info("👈 Preencha o valor histórico e as datas no menu lateral para iniciar.")
+        return
+        
+    if data_vencimento > data_calculo or data_juros > data_calculo:
+        st.error("⚠️ Erro: As datas de vencimento/citação devem ser anteriores à data do cálculo.")
+        return
+
+    with st.spinner(f"Processando matriz {indice_escolhido} do Banco Central..."):
+        codigo_atual = CODIGOS_BCB[indice_escolhido]
+        df_indice_completo = buscar_indice_bcb(codigo_atual)
+
+    # Lógica de Correção Monetária
+    valor_corrigido = valor_original
+    fator_acumulado = 1.0
+    
+    str_venc = data_vencimento.strftime('%Y-%m')
+    str_calc = data_calculo.strftime('%Y-%m')
+    
+    if not df_indice_completo.empty:
+        mask = (df_indice_completo['Mês/Ano'] >= str_venc) & (df_indice_completo['Mês/Ano'] < str_calc)
+        df_fase = df_indice_completo[mask]
+        
+        if indice_escolhido == "SELIC":
+            # Selic é soma simples
+            soma_selic = df_fase['Índice (%)'].sum() / 100
+            valor_corrigido = valor_original + (valor_original * soma_selic)
+        else:
+            # Demais índices são capitalizados (juros compostos)
+            for _, row in df_fase.iterrows():
+                fator_acumulado *= (1 + (row['Índice (%)'] / 100))
+            valor_corrigido = valor_original * fator_acumulado
+
+    # Lógica de Juros de Mora (Somente se não for SELIC)
+    valor_juros_mora = 0.0
+    if indice_escolhido != "SELIC" and aplicar_juros:
+        dias_juros = (data_calculo - data_juros).days
+        if dias_juros > 0:
+            meses_juros = dias_juros / 30
+            # Juros aplicados sobre o valor já corrigido
+            valor_juros_mora = valor_corrigido * (meses_juros * (perc_juros / 100))
+            
+    subtotal_atualizado = valor_corrigido + valor_juros_mora
+
+    # Penalidades Art 523
+    valor_multa_523 = subtotal_atualizado * 0.10 if multa_523 else 0.0
+    valor_hon_523 = subtotal_atualizado * 0.10 if hon_523 else 0.0
+    
+    total_devido = subtotal_atualizado + valor_multa_523 + valor_hon_523
+
+    # Interface Visual
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.markdown(f"""
+        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #004080; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
+            <h4 style="color: #004080; margin-top: 0;">Resumo da Atualização</h4>
+            <p style="margin-bottom: 5px;">Valor Histórico Original: R$ {valor_original:,.2f}</p>
+            <p style="margin-bottom: 5px;">Índice Aplicado: <b>{indice_escolhido}</b></p>
+            <p style="margin-bottom: 5px;">Principal Corrigido: R$ {valor_corrigido:,.2f}</p>
+            <p style="margin-bottom: 5px;">Juros de Mora: R$ {valor_juros_mora:,.2f}</p>
+            <hr style="margin: 10px 0;">
+            <h5 style="color: #333; margin: 0;">Subtotal Atualizado: R$ {subtotal_atualizado:,.2f}</h5>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_t2:
+        st.markdown(f"""
+        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
+            <h4 style="color: #dc3545; margin-top: 0;">Fase de Cumprimento</h4>
+            <p style="margin-bottom: 5px;">Multa Art. 523 (10%): R$ {valor_multa_523:,.2f}</p>
+            <p style="margin-bottom: 5px;">Honorários Art. 523 (10%): R$ {valor_hon_523:,.2f}</p>
+            <hr style="margin: 10px 0; visibility: hidden;">
+            <br>
+            <hr style="margin: 10px 0;">
+            <h5 style="color: #333; margin: 0;">Acréscimos Processuais: R$ {(valor_multa_523 + valor_hon_523):,.2f}</h5>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown(f"### ⚖️ TOTAL GERAL DEVIDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
+
+
 # =================================================================
 # --- MÓDULOS TRABALHISTAS ---
 # =================================================================
@@ -687,6 +793,26 @@ with st.sidebar:
     if menu != "Início":
         st.button("⬅️ VOLTAR AO INÍCIO", on_click=navegar_para, args=("Início", "Painel"), use_container_width=True)
         st.markdown("---")
+        
+        if menu == "Cível":
+            st.title("⚖️ Menu Cível")
+            ferramenta_selecionada = st.selectbox("Selecione a Ferramenta:", ["Painel Cível", "Revisão de Cheque Especial", "Atualização Monetária (TJ Padrão)"], index=["Painel", "Revisão de Cheque Especial", "Atualização Monetária (TJ Padrão)"].index(ferramenta) if ferramenta in ["Revisão de Cheque Especial", "Atualização Monetária (TJ Padrão)"] else 0)
+            if ferramenta_selecionada != ferramenta and ferramenta_selecionada != "Painel Cível":
+                navegar_para("Cível", ferramenta_selecionada)
+                st.rerun()
+            elif ferramenta_selecionada == "Painel Cível" and ferramenta != "Painel":
+                navegar_para("Cível", "Painel")
+                st.rerun()
+
+        elif menu == "Trabalhista":
+            st.title("👷 Menu Trabalhista")
+            ferramenta_selecionada = st.selectbox("Selecione a Ferramenta:", ["Painel Trabalhista", "Liquidação Expressa (Rescisão)", "Atualização ADC 58"], index=["Painel", "Liquidação Expressa (Rescisão)", "Atualização ADC 58"].index(ferramenta) if ferramenta in ["Liquidação Expressa (Rescisão)", "Atualização ADC 58"] else 0)
+            if ferramenta_selecionada != ferramenta and ferramenta_selecionada != "Painel Trabalhista":
+                navegar_para("Trabalhista", ferramenta_selecionada)
+                st.rerun()
+            elif ferramenta_selecionada == "Painel Trabalhista" and ferramenta != "Painel":
+                navegar_para("Trabalhista", "Painel")
+                st.rerun()
 
 # Lógica da Tela Principal
 if menu == "Início":
@@ -714,9 +840,21 @@ elif menu == "Cível":
         </div>
         """, unsafe_allow_html=True)
         st.button("Acessar Calculadora", on_click=navegar_para, args=("Cível", "Revisão de Cheque Especial"), key="btn_civ_1")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="tool-card">
+            <h4 style="color: #004080; margin-bottom: 5px;">📈 Atualização Monetária (TJ Padrão)</h4>
+            <p style="color: #666; font-size: 14px;">Módulo para cumprimento de sentença cível. Aplica os índices inflacionários do Banco Central, juros de mora e multas do art. 523 do CPC automaticamente.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("Acessar Calculadora", on_click=navegar_para, args=("Cível", "Atualização Monetária (TJ Padrão)"), key="btn_civ_2")
 
     elif ferramenta == "Revisão de Cheque Especial":
         modulo_cheque_especial()
+    elif ferramenta == "Atualização Monetária (TJ Padrão)":
+        modulo_civel_atualizacao()
     else:
         st.info("🚧 Módulo em desenvolvimento.")
 
