@@ -437,15 +437,15 @@ def modulo_cheque_especial():
 
 def modulo_civel_atualizacao():
     st.header("📈 Atualização de Débitos Judiciais (Padrão TJ)")
-    st.write("Cálculo para cumprimento de sentença cível. Aplica correção monetária, juros moratórios e multas/honorários processuais (Art. 523 CPC).")
+    st.write("Cálculo para cumprimento de sentença cível. Aplica correção monetária, juros moratórios e honorários advocatícios.")
     
     CODIGOS_BCB = {"INPC": 188, "IPCA-E": 10844, "IGP-M": 189, "SELIC": 4390}
 
     with st.sidebar:
         st.subheader("1. Valor e Datas")
         valor_original = st.number_input("Valor Histórico (R$)", value=0.00, step=100.0)
-        data_vencimento = st.date_input("Data do Vencimento (Termo Inicial da Correção)", value=None, format="DD/MM/YYYY")
-        data_juros = st.date_input("Data da Citação (Termo Inicial dos Juros)", value=None, format="DD/MM/YYYY")
+        data_vencimento = st.date_input("Data do Vencimento (Correção)", value=None, format="DD/MM/YYYY")
+        data_juros = st.date_input("Data da Citação (Juros)", value=None, format="DD/MM/YYYY")
         data_calculo = st.date_input("Data do Cálculo (Hoje)", value=date.today(), format="DD/MM/YYYY")
         
         st.markdown("---")
@@ -453,7 +453,7 @@ def modulo_civel_atualizacao():
         indice_escolhido = st.selectbox("Índice de Correção", list(CODIGOS_BCB.keys()))
         
         if indice_escolhido == "SELIC":
-            st.info("⚠️ A Taxa SELIC não cumula com Juros de Mora de 1% a.m., conforme jurisprudência do STJ.")
+            st.info("⚠️ A Taxa SELIC não cumula com Juros de Mora de 1% a.m.")
             aplicar_juros = False
             perc_juros = 0.0
         else:
@@ -461,9 +461,10 @@ def modulo_civel_atualizacao():
             perc_juros = st.number_input("Juros ao Mês (%)", value=1.0, step=0.1) if aplicar_juros else 0.0
             
         st.markdown("---")
-        st.subheader("3. Acréscimos Legais (Fase de Execução)")
+        st.subheader("3. Acréscimos Legais e Honorários")
         multa_523 = st.checkbox("Multa do Art. 523 do CPC (10%)", value=False)
         hon_523 = st.checkbox("Honorários do Art. 523 do CPC (10%)", value=False)
+        hon_comum = st.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0, help="Honorários de sucumbência ou contratuais incidentes sobre o montante atualizado.")
 
     if not data_vencimento or not data_juros or valor_original <= 0:
         st.info("👈 Preencha o valor histórico e as datas no menu lateral para iniciar.")
@@ -489,31 +490,30 @@ def modulo_civel_atualizacao():
         df_fase = df_indice_completo[mask]
         
         if indice_escolhido == "SELIC":
-            # Selic é soma simples
             soma_selic = df_fase['Índice (%)'].sum() / 100
             valor_corrigido = valor_original + (valor_original * soma_selic)
         else:
-            # Demais índices são capitalizados (juros compostos)
             for _, row in df_fase.iterrows():
                 fator_acumulado *= (1 + (row['Índice (%)'] / 100))
             valor_corrigido = valor_original * fator_acumulado
 
-    # Lógica de Juros de Mora (Somente se não for SELIC)
+    # Lógica de Juros de Mora
     valor_juros_mora = 0.0
     if indice_escolhido != "SELIC" and aplicar_juros:
         dias_juros = (data_calculo - data_juros).days
         if dias_juros > 0:
             meses_juros = dias_juros / 30
-            # Juros aplicados sobre o valor já corrigido
             valor_juros_mora = valor_corrigido * (meses_juros * (perc_juros / 100))
             
     subtotal_atualizado = valor_corrigido + valor_juros_mora
 
-    # Penalidades Art 523
+    # Penalidades e Honorários
     valor_multa_523 = subtotal_atualizado * 0.10 if multa_523 else 0.0
     valor_hon_523 = subtotal_atualizado * 0.10 if hon_523 else 0.0
+    valor_hon_comum = subtotal_atualizado * (hon_comum / 100) if hon_comum > 0 else 0.0
     
-    total_devido = subtotal_atualizado + valor_multa_523 + valor_hon_523
+    total_acrescimos = valor_multa_523 + valor_hon_523 + valor_hon_comum
+    total_devido = subtotal_atualizado + total_acrescimos
 
     # Interface Visual
     col_t1, col_t2 = st.columns(2)
@@ -533,18 +533,16 @@ def modulo_civel_atualizacao():
     with col_t2:
         st.markdown(f"""
         <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
-            <h4 style="color: #dc3545; margin-top: 0;">Fase de Cumprimento</h4>
+            <h4 style="color: #dc3545; margin-top: 0;">Fase de Execução / Honorários</h4>
             <p style="margin-bottom: 5px;">Multa Art. 523 (10%): R$ {valor_multa_523:,.2f}</p>
             <p style="margin-bottom: 5px;">Honorários Art. 523 (10%): R$ {valor_hon_523:,.2f}</p>
-            <hr style="margin: 10px 0; visibility: hidden;">
-            <br>
+            <p style="margin-bottom: 5px;">Honorários Comuns ({hon_comum}%): R$ {valor_hon_comum:,.2f}</p>
             <hr style="margin: 10px 0;">
-            <h5 style="color: #333; margin: 0;">Acréscimos Processuais: R$ {(valor_multa_523 + valor_hon_523):,.2f}</h5>
+            <h5 style="color: #333; margin: 0;">Acréscimos Totais: R$ {total_acrescimos:,.2f}</h5>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown(f"### ⚖️ TOTAL GERAL DEVIDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
-
 
 # =================================================================
 # --- MÓDULOS TRABALHISTAS ---
@@ -793,26 +791,6 @@ with st.sidebar:
     if menu != "Início":
         st.button("⬅️ VOLTAR AO INÍCIO", on_click=navegar_para, args=("Início", "Painel"), use_container_width=True)
         st.markdown("---")
-        
-        if menu == "Cível":
-            st.title("⚖️ Menu Cível")
-            ferramenta_selecionada = st.selectbox("Selecione a Ferramenta:", ["Painel Cível", "Revisão de Cheque Especial", "Atualização Monetária (TJ Padrão)"], index=["Painel", "Revisão de Cheque Especial", "Atualização Monetária (TJ Padrão)"].index(ferramenta) if ferramenta in ["Revisão de Cheque Especial", "Atualização Monetária (TJ Padrão)"] else 0)
-            if ferramenta_selecionada != ferramenta and ferramenta_selecionada != "Painel Cível":
-                navegar_para("Cível", ferramenta_selecionada)
-                st.rerun()
-            elif ferramenta_selecionada == "Painel Cível" and ferramenta != "Painel":
-                navegar_para("Cível", "Painel")
-                st.rerun()
-
-        elif menu == "Trabalhista":
-            st.title("👷 Menu Trabalhista")
-            ferramenta_selecionada = st.selectbox("Selecione a Ferramenta:", ["Painel Trabalhista", "Liquidação Expressa (Rescisão)", "Atualização ADC 58"], index=["Painel", "Liquidação Expressa (Rescisão)", "Atualização ADC 58"].index(ferramenta) if ferramenta in ["Liquidação Expressa (Rescisão)", "Atualização ADC 58"] else 0)
-            if ferramenta_selecionada != ferramenta and ferramenta_selecionada != "Painel Trabalhista":
-                navegar_para("Trabalhista", ferramenta_selecionada)
-                st.rerun()
-            elif ferramenta_selecionada == "Painel Trabalhista" and ferramenta != "Painel":
-                navegar_para("Trabalhista", "Painel")
-                st.rerun()
 
 # Lógica da Tela Principal
 if menu == "Início":
