@@ -9,76 +9,12 @@ from decimal import Decimal
 from fpdf import FPDF
 from dateutil.relativedelta import relativedelta
 
-# =================================================================
-# --- 1. CONFIGURAÇÃO DA PÁGINA E CSS CORPORATIVO ---
-# =================================================================
-st.set_page_config(
-    page_title="Tolaris Calc | Hub Pericial", 
-    layout="wide", 
-    initial_sidebar_state="collapsed" # Oculta a barra lateral nativa
-)
+# Configuração global da página
+st.set_page_config(page_title="Tolaris Calc - Hub Pericial", layout="wide", initial_sidebar_state="expanded")
 
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif !important;
-    }
-    .stApp {
-        background-color: #F8F9FA;
-    }
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-
-    /* Botões Primários Corporativos */
-    button[kind="primary"] {
-        background-color: #002B5B !important;
-        border: 1px solid #002B5B !important;
-        color: #FFFFFF !important;
-        border-radius: 4px !important;
-        font-weight: 500 !important;
-        transition: all 0.3s ease !important;
-    }
-    button[kind="primary"]:hover {
-        background-color: #004080 !important;
-        border-color: #004080 !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
-    }
-
-    /* Navbar Customizada */
-    .navbar-container {
-        padding-bottom: 15px;
-        border-bottom: 2px solid #E5E7EB;
-        margin-bottom: 20px;
-        margin-top: -40px;
-    }
-    button[kind="secondary"] {
-        background-color: transparent !important;
-        border: 1px solid transparent !important;
-        color: #6B7280 !important;
-        font-weight: 500 !important;
-    }
-    button[kind="secondary"]:hover {
-        color: #002B5B !important;
-        border-bottom: 2px solid #002B5B !important;
-        border-radius: 0px !important;
-    }
-    
-    /* Headers Customizados */
-    h1, h2, h3, h4, h5 {
-        color: #002B5B !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Cabeçalho da Marca
-st.markdown("<h2 style='font-weight: 700; margin-bottom: 0px; margin-top: 10px; letter-spacing: 1px;'>TOLARIS</h2>", unsafe_allow_html=True)
-
-# --- GERENCIADOR DE ESTADO DE NAVEGAÇÃO ---
+# --- GERENCIADOR DE ESTADO DE NAVEGAÇÃO (ROTEADOR SPA) ---
 if 'menu_principal' not in st.session_state:
-    st.session_state.menu_principal = "Inicio"
+    st.session_state.menu_principal = "Início"
 if 'ferramenta_ativa' not in st.session_state:
     st.session_state.ferramenta_ativa = "Painel"
 
@@ -86,27 +22,55 @@ def navegar_para(menu, ferramenta="Painel"):
     st.session_state.menu_principal = menu
     st.session_state.ferramenta_ativa = ferramenta
 
+# --- ESTILIZAÇÃO COMPLEMENTAR (CSS INJETADO) ---
+st.markdown("""
+    <style>
+    button[kind="primary"] {
+        background-color: #004080 !important;
+        border-color: #004080 !important;
+        color: white !important;
+    }
+    button[kind="primary"]:hover {
+        background-color: #00264d !important;
+        border-color: #00264d !important;
+    }
+    .stApp {
+        background-color: #f8f9fa;
+    }
+    .navbar-container {
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e0e0e0;
+        margin-bottom: 20px;
+    }
+    .tool-card {
+        background-color: white; 
+        padding: 20px; 
+        border-radius: 8px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        margin-bottom: 15px;
+        border-left: 4px solid #004080;
+    }
+    .tool-card-trabalhista {
+        border-left: 4px solid #28a745;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # =================================================================
-# --- MENU DE NAVEGAÇÃO SUPERIOR ---
+# --- MENU DE NAVEGAÇÃO SUPERIOR FIXO ---
 # =================================================================
 st.markdown("<div class='navbar-container'>", unsafe_allow_html=True)
 col_nav1, col_nav2, col_nav3, col_nav4 = st.columns([1, 1, 1, 3])
 with col_nav1:
-    st.button("INÍCIO", on_click=navegar_para, args=("Inicio", "Painel"), use_container_width=True, type="primary" if st.session_state.menu_principal == "Inicio" else "secondary")
+    st.button("🏠 INÍCIO", on_click=navegar_para, args=("Início", "Painel"), use_container_width=True, type="primary" if st.session_state.menu_principal == "Início" else "secondary")
 with col_nav2:
-    st.button("ÁREA CÍVEL", on_click=navegar_para, args=("Cível", "Painel"), use_container_width=True, type="primary" if st.session_state.menu_principal == "Cível" else "secondary")
+    st.button("⚖️ CÍVEL", on_click=navegar_para, args=("Cível", "Painel"), use_container_width=True, type="primary" if st.session_state.menu_principal == "Cível" else "secondary")
 with col_nav3:
-    st.button("ÁREA TRABALHISTA", on_click=navegar_para, args=("Trabalhista", "Painel"), use_container_width=True, type="primary" if st.session_state.menu_principal == "Trabalhista" else "secondary")
+    st.button("👷 TRABALHISTA", on_click=navegar_para, args=("Trabalhista", "Painel"), use_container_width=True, type="primary" if st.session_state.menu_principal == "Trabalhista" else "secondary")
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Função Botão Voltar Universal
-def botao_voltar(area):
-    if st.button("⬅️ Voltar ao Painel", key="voltar_painel"):
-        navegar_para(area, "Painel")
-    st.markdown("<br>", unsafe_allow_html=True)
-
 # =================================================================
-# --- FUNÇÕES DE BANCO DE DADOS E INTEGRAÇÕES ---
+# --- FUNÇÕES AUXILIARES GERAIS E INTEGRAÇÕES ---
 # =================================================================
 @st.cache_data
 def buscar_indice_bcb(codigo_bcb):
@@ -153,6 +117,7 @@ def carregar_tributos_json():
 def calcular_imposto_dinamico(valor_base, ano_competencia, tipo_imposto):
     db_tributos = carregar_tributos_json()
     ano_str = str(ano_competencia)
+    
     if not db_tributos or ano_str not in db_tributos:
         ano_str = "2024" if db_tributos and "2024" in db_tributos else None
 
@@ -193,13 +158,13 @@ def calcular_imposto_dinamico(valor_base, ano_competencia, tipo_imposto):
         return 0.0
 
 # =================================================================
-# --- EXPORTADORES PDF/EXCEL ---
+# --- EXPORTADORES PDF/EXCEL MÓDULO BANCÁRIO ---------------------
 # =================================================================
 def gerar_excel_bancario(df_resumo, df_detalhado):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_resumo.to_excel(writer, sheet_name='Resumo', index=False)
-        df_detalhado.to_excel(writer, sheet_name='Memoria', index=False)
+        df_resumo.to_excel(writer, sheet_name='Resumo da Divida', index=False)
+        df_detalhado.to_excel(writer, sheet_name='Memoria de Calculo', index=False)
     return output.getvalue()
 
 def gerar_pdf_bancario(resumo_dados, df_detalhado, indice_nome, juros_tipo, taxa):
@@ -207,7 +172,7 @@ def gerar_pdf_bancario(resumo_dados, df_detalhado, indice_nome, juros_tipo, taxa
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.set_font("Arial", style="B", size=16)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128) 
     pdf.cell(0, 10, "TOLARIS CALC - AUDITORIA DE CONTRATOS", ln=True, align="C")
     pdf.set_text_color(0, 0, 0) 
     pdf.set_font("Arial", style="I", size=10)
@@ -216,7 +181,7 @@ def gerar_pdf_bancario(resumo_dados, df_detalhado, indice_nome, juros_tipo, taxa
     pdf.set_font("Arial", style="B", size=12)
     pdf.cell(0, 8, "1. PARAMETROS DO CONTRATO E ATUALIZACAO", ln=True)
     pdf.set_font("Arial", size=11)
-    pdf.cell(0, 6, f"Indice: {indice_nome}", ln=True)
+    pdf.cell(0, 6, f"Indice: {indice_nome if indice_nome != 'Sem Atualização (Apenas Juros)' else 'Nao Aplicado'}", ln=True)
     pdf.cell(0, 6, f"Metodo: Juros {juros_tipo} | Taxa: {taxa:.3f}% ao mes", ln=True)
     pdf.cell(0, 6, f"Periodo Analisado: {resumo_dados['Dias']} dias", ln=True)
     pdf.ln(8)
@@ -227,6 +192,8 @@ def gerar_pdf_bancario(resumo_dados, df_detalhado, indice_nome, juros_tipo, taxa
     pdf.cell(0, 6, f"Total de Juros Computados: R$ {resumo_dados['Juros']:.2f}", ln=True)
     pdf.set_font("Arial", style="B", size=11)
     pdf.cell(0, 6, f"VALOR TOTAL RECALCULADO: R$ {resumo_dados['Final']:.2f}", ln=True)
+    
+    # Restauração da Tabela Detalhada no PDF do Cheque Especial
     pdf.ln(10)
     pdf.set_font("Arial", style="B", size=12)
     pdf.cell(0, 8, "3. EXTRATO DA MEMORIA DE CALCULO DIARIA", ln=True)
@@ -251,80 +218,105 @@ def gerar_pdf_bancario(resumo_dados, df_detalhado, indice_nome, juros_tipo, taxa
         pdf.ln()
     return bytes(pdf.output())
 
+# =================================================================
+# --- EXPORTADORES PDF/EXCEL MÓDULO CÍVEL (TJ PADRÃO) -------------
+# =================================================================
 def gerar_excel_civel(info_calculo):
     output = io.BytesIO()
     df_info = pd.DataFrame([{"Parametro": k, "Valor": v} for k, v in info_calculo.items()])
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_info.to_excel(writer, sheet_name='Memoria', index=False)
+        df_info.to_excel(writer, sheet_name='Memoria Atualizacao', index=False)
     return output.getvalue()
 
 def gerar_pdf_civel(info):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", style="B", size=16)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128)
     pdf.cell(0, 10, "TOLARIS CALC - MEMORIA DE ATUALIZACAO CIVEL", ln=True, align="C")
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", style="I", size=10)
     pdf.cell(0, 6, f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", ln=True, align="C")
     pdf.ln(8)
+    
     pdf.set_font("Arial", style="B", size=12)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128)
     pdf.cell(0, 8, "1. PARAMETROS DO CALCULO", ln=True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=10)
+    
     pdf.cell(95, 6, f"Valor Historico Base: {info['Valor Original']}", border=0)
     pdf.cell(95, 6, f"Indice de Correcao: {info['Indice']}", border=0, ln=True)
     pdf.cell(95, 6, f"Termo Inicial Correcao: {info['Data Vencimento']}", border=0)
     pdf.cell(95, 6, f"Termo Inicial Juros: {info['Data Juros']}", border=0, ln=True)
     pdf.cell(0, 6, f"Data do Fechamento do Calculo: {info['Data Calculo']}", border=0, ln=True)
-    pdf.ln(4)
+    pdf.ln(5)
+    
     pdf.set_font("Arial", style="B", size=12)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128)
     pdf.cell(0, 8, "2. DEMONSTRATIVO DA DIVIDA PRINCIPAL", ln=True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=11)
+    
     pdf.cell(130, 6, "Principal Corrigido Monetariamente:", border=0)
     pdf.cell(50, 6, info['Principal Corrigido'], border=0, align="R", ln=True)
     pdf.cell(130, 6, "Juros de Mora Computados no Periodo:", border=0)
     pdf.cell(50, 6, info['Juros de Mora'], border=0, align="R", ln=True)
     pdf.cell(130, 6, f"Multa Contratual ({info['Perc_Multa_Contrato']}%):", border=0)
     pdf.cell(50, 6, info['Multa Contratual'], border=0, align="R", ln=True)
+    
     pdf.set_font("Arial", style="B", size=11)
     pdf.set_fill_color(240, 245, 250)
     pdf.cell(130, 7, " BASE EXECUTADA (Principal + Juros + Multa):", border=1, fill=True)
     pdf.cell(50, 7, f"{info['Base Processual']} ", border=1, align="R", fill=True, ln=True)
+    
     pdf.ln(4)
     pdf.set_font("Arial", style="B", size=12)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128)
     pdf.cell(0, 8, "3. DESPESAS E CUSTAS PROCESSUAIS", ln=True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=11)
     pdf.cell(130, 6, f"Custas Pagas em {info['Data Custas']} (Apenas Correcao):", border=0)
     pdf.cell(50, 6, info['Custas Corrigidas'], border=0, align="R", ln=True)
+    
     pdf.ln(4)
     pdf.set_font("Arial", style="B", size=12)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128)
     pdf.cell(0, 8, "4. MULTAS E HONORARIOS (FASE DE CUMPRIMENTO)", ln=True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=11)
-    pdf.cell(130, 6, "Multa por Inadimplemento Art. 523, CPC (10%):", border=0)
+    
+    pdf.cell(130, 6, "Multa por Inadimplemento Art. 523, par. 1o CPC (10%):", border=0)
     pdf.cell(50, 6, info['Multa Art. 523'], border=0, align="R", ln=True)
-    pdf.cell(130, 6, "Honorarios de Execucao Art. 523, CPC (10%):", border=0)
+    pdf.cell(130, 6, "Honorarios de Execucao Art. 523, par. 1o CPC (10%):", border=0)
     pdf.cell(50, 6, info['Honorarios Art. 523'], border=0, align="R", ln=True)
     pdf.cell(130, 6, f"Honorarios Advocaticios Comuns/Contratuais ({info['Perc_Hon']}%):", border=0)
     pdf.cell(50, 6, info['Honorarios Comuns'], border=0, align="R", ln=True)
+    
     pdf.ln(4)
     pdf.set_font("Arial", style="B", size=13)
     pdf.set_fill_color(230, 240, 230)
     pdf.set_text_color(0, 100, 0)
     pdf.cell(130, 9, " TOTAL GERAL EXEQUENDO DEVIDO:", border=1, fill=True)
     pdf.cell(50, 9, f"{info['Total Devido']} ", border=1, align="R", fill=True, ln=True)
+    
     return bytes(pdf.output())
 
+# =================================================================
+# --- EXPORTADORES PDF/EXCEL MÓDULO TRABALHISTA -------------------
+# =================================================================
 def gerar_excel_trabalhista(df_rescisao, info_contrato, totais):
     output = io.BytesIO()
-    df_info = pd.DataFrame([{"Parametro": k, "Valor": v} for k, v in info_contrato.items()])
+    df_info = pd.DataFrame([
+        {"Parametro": "Admissao", "Valor": info_contrato['admissao']},
+        {"Parametro": "Demissao", "Valor": info_contrato['demissao']},
+        {"Parametro": "Ano Competencia Fiscal", "Valor": info_contrato['ano_competencia']},
+        {"Parametro": "Motivo", "Valor": info_contrato['motivo']},
+        {"Parametro": "Base Rescisao", "Valor": f"R$ {info_contrato['remun_rescisoria']:.2f}"},
+        {"Parametro": "Total de Deducoes", "Valor": f"R$ {totais['deducoes']:.2f}"},
+        {"Parametro": "Valores Ja Pagos", "Valor": f"R$ {info_contrato['valores_pagos']:.2f}"},
+        {"Parametro": "Liquido a Receber", "Valor": f"R$ {totais['liquido']:.2f}"}
+    ])
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_info.to_excel(writer, sheet_name='Parametros', index=False)
         df_rescisao.to_excel(writer, sheet_name='Rubricas', index=False)
@@ -335,14 +327,15 @@ def gerar_pdf_trabalhista(df_rescisao, info_contrato, totais):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.set_font("Arial", style="B", size=16)
-    pdf.set_text_color(0, 43, 91) 
+    pdf.set_text_color(0, 64, 128) 
     pdf.cell(0, 10, "TOLARIS CALC - LIQUIDACAO TRABALHISTA", ln=True, align="C")
     pdf.set_text_color(0, 0, 0) 
     pdf.set_font("Arial", style="I", size=10)
     pdf.cell(0, 6, f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", ln=True, align="C")
     pdf.ln(8)
+    
     pdf.set_font("Arial", style="B", size=12)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128)
     pdf.cell(0, 8, "1. INFORMACOES DO CONTRATO", ln=True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=10)
@@ -354,17 +347,20 @@ def gerar_pdf_trabalhista(df_rescisao, info_contrato, totais):
     pdf.set_fill_color(235, 240, 245)
     pdf.cell(0, 8, f" Base de Calculo Rescisoria (Complexo Salarial): R$ {info_contrato['remun_rescisoria']:.2f}", border=1, ln=True, fill=True)
     pdf.ln(6)
+    
     pdf.set_font("Arial", style="B", size=12)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128)
     pdf.cell(0, 8, "2. DEMONSTRATIVO DE RUBRICAS", ln=True)
+    
     pdf.set_font("Arial", style="B", size=10)
-    pdf.set_fill_color(0, 43, 91)
+    pdf.set_fill_color(0, 64, 128)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(95, 7, "Verba / Descricao", border=1, align="L", fill=True)
     pdf.cell(30, 7, "Fluxo", border=1, align="C", fill=True)
     pdf.cell(35, 7, "Natureza", border=1, align="C", fill=True)
     pdf.cell(30, 7, "Valor (R$)", border=1, align="R", fill=True)
     pdf.ln()
+    
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=9)
     for _, row in df_rescisao.iterrows():
@@ -373,32 +369,38 @@ def gerar_pdf_trabalhista(df_rescisao, info_contrato, totais):
         pdf.cell(35, 6, str(row['Natureza']), border=1, align="C")
         pdf.cell(30, 6, f"{row['Valor (R$)']:.2f}", border=1, align="R")
         pdf.ln()
+        
     pdf.ln(4)
     pdf.set_font("Arial", style="B", size=10)
     pdf.cell(160, 6, "TOTAL BRUTO (PROVENTOS):", border=0, align="R")
     pdf.cell(30, 6, f"R$ {totais['bruto']:.2f}", border=0, align="R", ln=True)
-    pdf.set_text_color(75, 85, 99)
+    pdf.set_text_color(150, 0, 0)
     pdf.cell(160, 6, "TOTAL DE DESCONTOS LEGAIS:", border=0, align="R")
     pdf.cell(30, 6, f"R$ {totais['deducoes']:.2f}", border=0, align="R", ln=True)
+    
     if info_contrato['valores_pagos'] > 0:
         pdf.cell(160, 6, "ABATIMENTO / VALORES JA PAGOS:", border=0, align="R")
         pdf.cell(30, 6, f"R$ {info_contrato['valores_pagos']:.2f}", border=0, align="R", ln=True)
+
     pdf.set_text_color(0, 100, 0)
     pdf.set_font("Arial", style="B", size=12)
     pdf.cell(160, 8, "CREDITO LIQUIDO DO TRABALHADOR:", border=0, align="R")
     pdf.cell(30, 8, f"R$ {totais['liquido']:.2f}", border=0, align="R", ln=True)
     pdf.set_text_color(0, 0, 0)
+    
     pdf.ln(6)
     pdf.set_font("Arial", style="B", size=12)
-    pdf.set_text_color(0, 43, 91)
+    pdf.set_text_color(0, 64, 128)
     pdf.cell(0, 8, "3. MULTAS, CONTA VINCULADA E HONORARIOS", ln=True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=10)
+    
     pdf.cell(0, 6, f"Saldo Estimado FGTS (8%): R$ {totais['fgts_deposito']:.2f}", border=0, ln=True)
     pdf.cell(0, 6, f"Multa Rescisoria (40% FGTS): R$ {totais['fgts_multa']:.2f}", border=0, ln=True)
     pdf.cell(0, 6, f"Multa do Art. 477 da CLT: R$ {totais['multa_477']:.2f}", border=0, ln=True)
     if info_contrato['multa_467']:
         pdf.cell(0, 6, f"Multa do Art. 467 da CLT (50% incontroversas): Aplicada no demonstrativo", border=0, ln=True)
+    
     pdf.ln(4)
     if totais['hon_sucumbenciais'] > 0 or totais['hon_contratuais'] > 0:
         pdf.set_font("Arial", style="B", size=10)
@@ -408,18 +410,19 @@ def gerar_pdf_trabalhista(df_rescisao, info_contrato, totais):
             pdf.cell(0, 6, f"- Honorarios Sucumbenciais (Base Bruta): R$ {totais['hon_sucumbenciais']:.2f}", border=0, ln=True)
         if totais['hon_contratuais'] > 0:
             pdf.cell(0, 6, f"- Honorarios Contratuais (Base Liquida): R$ {totais['hon_contratuais']:.2f}", border=0, ln=True)
+
     return bytes(pdf.output())
 
 # =================================================================
-# --- TELAS ESPECÍFICAS DAS FERRAMENTAS CÍVEIS --------------------
+# --- MÓDULOS CÍVEIS ---
 # =================================================================
 def modulo_cheque_especial():
-    botao_voltar("Cível")
-    st.header("Revisão de Cheque Especial e Contratos Bancários")
-    st.write("Auditoria diária de extratos bancários para descaracterizar juros abusivos e aplicar os índices do BCB.")
+    st.header("🕵️ Auditoria de Cheque Especial e Contratos")
     
+    # Inicialização de Variáveis Locais de Segurança
     df_indices = pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
     dic_lancamentos = {}
+    
     if 'reset_contador' not in st.session_state:
         st.session_state.reset_contador = 0
     def limpar_tabela():
@@ -427,17 +430,15 @@ def modulo_cheque_especial():
     
     CODIGOS_BCB = {"IGP-M": 189, "IPCA": 433, "INPC": 188, "INCC": 192}
 
-    with st.container(border=True):
-        st.markdown("<h5>1. Parâmetros do Contrato Base</h5>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        data_inicial = c1.date_input("Data Inicial", value=None, format="DD/MM/YYYY")
-        data_final = c2.date_input("Data Final", value=None, format="DD/MM/YYYY")
-        saldo_inicial = c3.number_input("Saldo Inicial Negativo (R$)", value=0.00, step=100.0)
-        indice_escolhido = c4.selectbox("Índice de Atualização", ["Sem Atualização (Apenas Juros)"] + list(CODIGOS_BCB.keys()))
-
-        c5, c6, c7, c8 = st.columns(4)
-        tipo_juros = c5.radio("Método de Juros", ["Compostos", "Simples"])
-        taxa_juros = c6.number_input("Taxa de Juros a.m. (%)", value=8.000, format="%.3f")
+    with st.sidebar:
+        data_inicial = st.date_input("Data Inicial", value=None, min_value=date(1980, 1, 1), format="DD/MM/YYYY")
+        data_final = st.date_input("Data Final", value=None, min_value=date(1980, 1, 1), format="DD/MM/YYYY")
+        saldo_inicial = st.number_input("Saldo Inicial Negativo (R$)", value=0.00, step=100.0)
+        st.markdown("---")
+        opcoes_indices = ["Sem Atualização (Apenas Juros)"] + list(CODIGOS_BCB.keys())
+        indice_escolhido = st.selectbox("Índice de Atualização", opcoes_indices)
+        tipo_juros = st.radio("Método de Juros", ["Compostos", "Simples"])
+        taxa_juros = st.number_input("Taxa de Juros a.m. (%)", value=8.000, format="%.3f")
 
         if indice_escolhido != "Sem Atualização (Apenas Juros)":
             codigo_atual = CODIGOS_BCB[indice_escolhido]
@@ -450,27 +451,26 @@ def modulo_cheque_especial():
             df_indices = st.data_editor(df_filtrado, num_rows="dynamic", hide_index=True)
 
     if not data_inicial or not data_final:
-        st.info("Preencha as datas para liberar a tabela de lançamentos.")
+        st.info("👈 Defina os parâmetros no menu lateral para iniciar a auditoria bancária.")
         return
     if data_inicial > data_final:
-        st.warning("Atenção: A Data Inicial não pode ser posterior à Data Final.")
+        st.error("⚠️ A Data Inicial não pode ser posterior à Data Final.")
         return
 
-    st.markdown("<h5>2. Tabela Diária de Lançamentos</h5>", unsafe_allow_html=True)
     dias_totais = (data_final - data_inicial).days
     datas_iniciais = [(data_inicial + timedelta(days=i)) for i in range(dias_totais + 1)]
     df_lancamentos_iniciais = pd.DataFrame({"Data": datas_iniciais, "Débitos (-)": [0.00 for _ in range(len(datas_iniciais))], "Créditos (+)": [0.00 for _ in range(len(datas_iniciais))]})
 
     df_lancamentos = st.data_editor(
         df_lancamentos_iniciais, key=f"tabela_lancamentos_{st.session_state.reset_contador}", num_rows="dynamic", use_container_width=True, hide_index=True,
-        column_config={"Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"), "Débitos (-)": st.column_config.NumberColumn("Débitos (-)", format="R$ %.2f"), "Créditos (+)": st.column_config.NumberColumn("Créditos (+)", format="R$ %.2f")}
+        column_config={"Data": st.column_config.DateColumn("Data", min_value=date(1980, 1, 1), format="DD/MM/YYYY"), "Débitos (-)": st.column_config.NumberColumn("Débitos (-)", format="R$ %.2f"), "Créditos (+)": st.column_config.NumberColumn("Créditos (+)", format="R$ %.2f")}
     )
 
     col_btn1, col_btn2 = st.columns([3, 1])
     with col_btn1:
         btn_processar = st.button("PROCESSAR REVISÃO BANCÁRIA", type="primary", use_container_width=True)
     with col_btn2:
-        st.button("Limpar Tabela", on_click=limpar_tabela, use_container_width=True)
+        st.button("🧹 Limpar Tabela", on_click=limpar_tabela, use_container_width=True)
 
     if btn_processar:
         dic_indices = {row["Mês/Ano"]: Decimal(str(row["Índice (%)"] / 100)) for _, row in df_indices.iterrows()} if not df_indices.empty else {}
@@ -517,76 +517,79 @@ def modulo_cheque_especial():
         resumo_dict = {"Original": float(saldo_atual), "Juros": float(valor_juros), "Final": float(saldo_final_absoluto), "Dias": dias_totais}
         df_mem = pd.DataFrame(memoria_calculo)
         
+        st.subheader("📥 Exportar Laudo")
         ex1, ex2 = st.columns(2)
-        with ex1: st.download_button("Baixar Planilha (Excel)", data=gerar_excel_bancario(pd.DataFrame([resumo_dict]), df_mem), file_name="Revisao_Bancaria.xlsx", use_container_width=True)
-        with ex2: st.download_button("Baixar PDF Pericial", data=gerar_pdf_bancario(resumo_dict, df_mem, indice_escolhido, tipo_juros, taxa_juros), file_name="Laudo_Bancario.pdf", use_container_width=True)
-
+        with ex1: st.download_button("📊 Baixar Planilha (Excel)", data=gerar_excel_bancario(pd.DataFrame([resumo_dict]), df_mem), file_name="Revisao_Bancaria.xlsx", use_container_width=True)
+        with ex2: st.download_button("📄 Baixar PDF Pericial", data=gerar_pdf_bancario(resumo_dict, df_mem, indice_escolhido, tipo_juros, taxa_juros), file_name="Laudo_Bancario.pdf", use_container_width=True)
 
 def modulo_civel_atualizacao():
-    botao_voltar("Cível")
-    st.header("Atualização Monetária (TJ Padrão)")
-    st.write("Cálculo processual para cumprimento de sentença cível, com juros, multas contratuais e honorários do Art. 523 CPC.")
+    st.header("📈 Atualização de Débitos Judiciais (Padrão TJ)")
+    st.write("Cálculo para cumprimento de sentença cível. Aplica correção monetária, juros moratórios, multas contratuais e honorários.")
     
     CODIGOS_BCB = {"INPC": 188, "IPCA-E": 10844, "IGP-M": 189, "SELIC": 4390}
 
-    with st.container(border=True):
-        st.markdown("<h5>1. Valores e Datas do Principal</h5>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        valor_original = c1.number_input("Valor Histórico (R$)", value=0.00, step=100.0)
-        data_vencimento = c2.date_input("Data do Vencimento (Correção)", value=None, format="DD/MM/YYYY")
-        data_juros = c3.date_input("Data da Citação (Juros)", value=None, format="DD/MM/YYYY")
-        data_calculo = c4.date_input("Data do Cálculo (Hoje)", value=date.today(), format="DD/MM/YYYY")
+    with st.sidebar:
+        st.subheader("1. Valores e Datas do Principal")
+        valor_original = st.number_input("Valor Histórico do Principal (R$)", value=0.00, step=100.0)
+        data_vencimento = st.date_input("Data do Vencimento (Correção)", value=None, format="DD/MM/YYYY")
+        data_juros = st.date_input("Data da Citação (Juros)", value=None, format="DD/MM/YYYY")
+        data_calculo = st.date_input("Data do Cálculo (Hoje)", value=date.today(), format="DD/MM/YYYY")
         
-    with st.container(border=True):
-        st.markdown("<h5>2. Fatores de Atualização e Custas</h5>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        indice_escolhido = c1.selectbox("Índice de Correção", list(CODIGOS_BCB.keys()))
-        
-        aplicar_juros = False
-        perc_juros = 0.0
-        if indice_escolhido == "SELIC":
-            c2.info("A SELIC embute juros de mora.")
-        else:
-            aplicar_juros = c2.checkbox("Aplicar Juros de Mora", value=True)
-            perc_juros = c3.number_input("Juros ao Mês (%)", value=1.0, step=0.1) if aplicar_juros else 0.0
-            
-        custas_pagas = c4.number_input("Custas Pagas a Reembolsar (R$)", value=0.00, step=50.0)
+        st.markdown("---")
+        st.subheader("2. Despesas Processuais")
+        custas_pagas = st.number_input("Custas Pagas (R$)", value=0.00, step=50.0, help="Valor das custas iniciais a serem reembolsadas (Apenas Correção).")
         data_custas = None
         if custas_pagas > 0:
             data_custas = st.date_input("Data do Pagamento das Custas", value=None, format="DD/MM/YYYY")
 
-    with st.container(border=True):
-        st.markdown("<h5>3. Multas e Honorários</h5>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        multa_contratual = c1.number_input("Multa Contratual / Penal (%)", value=0.0, step=1.0)
-        multa_523 = c2.checkbox("Multa do Art. 523 CPC (10%)", value=False)
-        hon_523 = c3.checkbox("Honorários do Art. 523 CPC (10%)", value=False)
-        hon_comum = c4.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0)
+        st.markdown("---")
+        st.subheader("3. Fatores de Atualização")
+        indice_escolhido = st.selectbox("Índice de Correção Monetária", list(CODIGOS_BCB.keys()))
+        
+        if indice_escolhido == "SELIC":
+            st.info("⚠️ A Taxa SELIC embute juros e correção. Juros de mora adicionais desabilitados.")
+            aplicar_juros = False
+            perc_juros = 0.0
+        else:
+            aplicar_juros = st.checkbox("Aplicar Juros de Mora no Principal", value=True)
+            perc_juros = st.number_input("Juros ao Mês (%)", value=1.0, step=0.1) if aplicar_juros else 0.0
+            
+        st.markdown("---")
+        st.subheader("4. Multas e Honorários")
+        multa_contratual = st.number_input("Multa Contratual / Penal (%)", value=0.0, step=1.0, help="Aplicada sobre o Principal atualizado + Juros.")
+        multa_523 = st.checkbox("Multa do Art. 523 do CPC (10%)", value=False)
+        hon_523 = st.checkbox("Honorários do Art. 523 do CPC (10%)", value=False)
+        hon_comum = st.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0, help="Honorários de sucumbência ou contratuais.")
 
     if not data_vencimento or not data_juros or valor_original <= 0:
-        st.info("Preencha o valor histórico e as datas para iniciar.")
+        st.info("👈 Preencha o valor histórico e as datas no menu lateral para iniciar.")
         return
+        
     if data_vencimento > data_calculo or data_juros > data_calculo:
-        st.warning("As datas devem ser anteriores à data do cálculo.")
+        st.error("⚠️ Erro: As datas de vencimento/citação devem ser anteriores à data do cálculo.")
         return
+        
     if custas_pagas > 0 and not data_custas:
-        st.warning("Informe a data de pagamento das custas para correção.")
+        st.warning("⚠️ Informe a data de pagamento das custas para a devida correção.")
         return
 
-    with st.spinner(f"Processando matriz {indice_escolhido}..."):
+    with st.spinner(f"Processando matriz {indice_escolhido} do Banco Central..."):
         codigo_atual = CODIGOS_BCB[indice_escolhido]
         df_indice_completo = buscar_indice_bcb(codigo_atual)
 
+    # Lógica de Correção do Principal
     valor_corrigido = valor_original
     fator_acumulado = 1.0
     str_venc = data_vencimento.strftime('%Y-%m')
     str_calc = data_calculo.strftime('%Y-%m')
     
+    # Lógica de Correção das Custas
     valor_custas_corrigidas = custas_pagas
     fator_custas = 1.0
     str_custas = data_custas.strftime('%Y-%m') if custas_pagas > 0 and data_custas else None
     
     if not df_indice_completo.empty:
+        # Principal
         mask = (df_indice_completo['Mês/Ano'] >= str_venc) & (df_indice_completo['Mês/Ano'] < str_calc)
         df_fase = df_indice_completo[mask]
         if indice_escolhido == "SELIC":
@@ -596,6 +599,7 @@ def modulo_civel_atualizacao():
             for _, row in df_fase.iterrows(): fator_acumulado *= (1 + (row['Índice (%)'] / 100))
             valor_corrigido = valor_original * fator_acumulado
             
+        # Custas (Sem juros)
         if str_custas:
             mask_custas = (df_indice_completo['Mês/Ano'] >= str_custas) & (df_indice_completo['Mês/Ano'] < str_calc)
             df_fase_custas = df_indice_completo[mask_custas]
@@ -606,6 +610,7 @@ def modulo_civel_atualizacao():
                 for _, row in df_fase_custas.iterrows(): fator_custas *= (1 + (row['Índice (%)'] / 100))
                 valor_custas_corrigidas = custas_pagas * fator_custas
 
+    # Juros de Mora (Somente Principal)
     valor_juros_mora = 0.0
     if indice_escolhido != "SELIC" and aplicar_juros:
         dias_juros = (data_calculo - data_juros).days
@@ -627,8 +632,8 @@ def modulo_civel_atualizacao():
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.markdown(f"""
-        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #002B5B; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
-            <h4 style="color: #002B5B; margin-top: 0;">Dívida Principal Atualizada</h4>
+        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #004080; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
+            <h4 style="color: #004080; margin-top: 0;">1. Dívida Principal Atualizada</h4>
             <p style="margin-bottom: 5px;">Valor Histórico: R$ {valor_original:,.2f}</p>
             <p style="margin-bottom: 5px;">Principal Corrigido ({indice_escolhido}): R$ {valor_corrigido:,.2f}</p>
             <p style="margin-bottom: 5px;">Juros de Mora: R$ {valor_juros_mora:,.2f}</p>
@@ -640,8 +645,8 @@ def modulo_civel_atualizacao():
         
     with col_t2:
         st.markdown(f"""
-        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #4B5563; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
-            <h4 style="color: #4B5563; margin-top: 0;">Custas e Honorários</h4>
+        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
+            <h4 style="color: #dc3545; margin-top: 0;">2. Custas, Penalidades e Honorários</h4>
             <p style="margin-bottom: 5px;">Custas Pagas Atualizadas: R$ {valor_custas_corrigidas:,.2f}</p>
             <p style="margin-bottom: 5px;">Multa Art. 523 (10%): R$ {valor_multa_523:,.2f}</p>
             <p style="margin-bottom: 5px;">Honorários Art. 523 (10%): R$ {valor_hon_523:,.2f}</p>
@@ -651,9 +656,9 @@ def modulo_civel_atualizacao():
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown(f"### TOTAL GERAL EXEQUENDO: R$ {total_devido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    st.markdown(f"### ⚖️ TOTAL GERAL EXEQUENDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
 
-    st.subheader("Exportar Relatório de Atualização Monetária")
+    st.subheader("📥 Exportar Relatório de Atualização Monetária Cível")
     dic_dados_civel = {
         "Valor Original": f"R$ {valor_original:,.2f}",
         "Data Vencimento": data_vencimento.strftime("%d/%m/%Y"),
@@ -676,65 +681,66 @@ def modulo_civel_atualizacao():
     }
     
     cx1, cx2 = st.columns(2)
-    with cx1: st.download_button("Baixar Memória de Cálculo (Excel)", data=gerar_excel_civel(dic_dados_civel), file_name="Atualizacao_Civel.xlsx", use_container_width=True)
-    with cx2: st.download_button("Baixar Relatório de Atualização (PDF)", data=gerar_pdf_civel(dic_dados_civel), file_name="Laudo_Atualizacao_Civel.pdf", use_container_width=True)
+    with cx1: st.download_button("📊 Baixar Memória de Cálculo (Excel)", data=gerar_excel_civel(dic_dados_civel), file_name="Atualizacao_Civel.xlsx", use_container_width=True)
+    with cx2: st.download_button("📄 Baixar Relatório de Atualização (PDF)", data=gerar_pdf_civel(dic_dados_civel), file_name="Laudo_Atualizacao_Civel.pdf", use_container_width=True)
 
 # =================================================================
-# --- TELAS ESPECÍFICAS DAS FERRAMENTAS TRABALHISTAS --------------
+# --- MÓDULOS TRABALHISTAS ---
 # =================================================================
 def modulo_trabalhista_rescisao():
-    botao_voltar("Trabalhista")
-    st.header("Liquidação Expressa (Rescisão e Sentença)")
-    st.write("Motor pericial inteligente com integração de verbas, reflexos, multas e deduções legais.")
+    st.header("🧾 Liquidação Expressa (Rescisão e Sentença)")
+    st.write("Motor pericial inteligente com integração de verbas, reflexos, multas e honorários.")
     
     historico_sm = obter_historico_salario_minimo()
     
-    with st.container(border=True):
-        st.markdown("<h5>1. Parâmetros do Contrato Base</h5>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        data_admissao = c1.date_input("Data de Admissão", value=None, format="DD/MM/YYYY")
-        data_demissao = c2.date_input("Data de Demissão", value=None, format="DD/MM/YYYY")
-        salario_base = c3.number_input("Salário Base (R$)", value=0.00, step=100.0)
-        motivo_rescisao = c4.selectbox("Motivo da Rescisão", ["Demissão Sem Justa Causa", "Pedido de Demissão", "Demissão por Justa Causa", "Demissão Indireta"])
-
-    with st.container(border=True):
-        st.markdown("<h5>2. Adicionais e Jornada (Médias)</h5>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        adicional_ocupacional = c1.selectbox("Adicionais Ocupacionais", ["Nenhum Adicional", "Insalubridade - Mínimo (10%)", "Insalubridade - Médio (20%)", "Insalubridade - Máximo (40%)", "Periculosidade (30%)"])
-        he_50 = c2.number_input("HE 50% (Média/mês)", value=0.0, step=1.0)
-        he_100 = c3.number_input("HE 100% (Média/mês)", value=0.0, step=1.0)
-        he_noturna = c4.number_input("H. Noturnas (Média)", value=0.0, step=1.0)
+    with st.sidebar:
+        st.subheader("1. Parâmetros do Contrato")
+        data_admissao = st.date_input("Data de Admissão", value=None, format="DD/MM/YYYY")
+        data_demissao = st.date_input("Data de Demissão (Último dia)", value=None, format="DD/MM/YYYY")
+        salario_base = st.number_input("Salário Base (R$)", value=0.00, step=100.0)
+        
+        st.markdown("---")
+        st.subheader("2. Adicionais e Jornada")
+        adicional_ocupacional = st.selectbox("Adicionais Ocupacionais", ["Nenhum Adicional", "Insalubridade - Mínimo (10%)", "Insalubridade - Médio (20%)", "Insalubridade - Máximo (40%)", "Periculosidade (30%)"])
         
         salario_minimo = 0.0
         if "Insalubridade" in adicional_ocupacional:
-            cc1, cc2 = st.columns([1, 3])
-            selecao_sm = cc1.selectbox("Ano do S.M.", list(historico_sm.keys()))
+            selecao_sm = st.selectbox("Ano/Valor do Salário Mínimo (API BCB)", list(historico_sm.keys()))
             if selecao_sm == "Outro (Digitar Manualmente)":
-                salario_minimo = cc2.number_input("Digite o S.M. (R$)", value=0.00, step=10.0)
+                salario_minimo = st.number_input("Digite o S.M. (R$)", value=0.00, step=10.0)
             else:
                 salario_minimo = historico_sm[selecao_sm]
-                cc2.info(f"Salário Mínimo base: R$ {salario_minimo:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+                st.info(f"Salário Mínimo travado em: **R$ {salario_minimo:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
         
-    with st.container(border=True):
-        st.markdown("<h5>3. Deduções, Multas e Honorários</h5>", unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4)
-        faltas_injustificadas = c1.number_input("Faltas (Dias)", value=0, step=1)
-        descontar_vt = c2.checkbox("Descontar Vale Transporte", value=False)
-        multa_467 = c3.checkbox("Multa Art. 467 CLT (50%)", value=False)
-        valores_pagos = c4.number_input("Deduzir Valores Já Pagos (R$)", value=0.00, step=100.0)
-
-        c5, c6, c7, c8 = st.columns(4)
-        hon_sucumbenciais = c5.number_input("Honorários Sucumbenciais (%)", value=0.0, step=1.0)
-        hon_contratuais = c6.number_input("Honorários Contratuais (%)", value=0.0, step=1.0)
+        he_50 = st.number_input("HE 50% (Média/mês)", value=0.0, step=1.0)
+        he_100 = st.number_input("HE 100% (Média/mês)", value=0.0, step=1.0)
+        he_noturna = st.number_input("H. Noturnas (Média/mês)", value=0.0, step=1.0)
+        
+        st.markdown("---")
+        st.subheader("3. Deduções e Faltas")
+        faltas_injustificadas = st.number_input("Faltas (Dias)", value=0, step=1)
+        descontar_vt = st.checkbox("Descontar Vale Transporte", value=False)
+        
+        st.markdown("---")
+        st.subheader("4. Enquadramento Jurídico")
+        motivo_rescisao = st.selectbox("Motivo da Rescisão", ["Demissão Sem Justa Causa", "Pedido de Demissão", "Demissão por Justa Causa", "Demissão Indireta"])
+        
+        st.markdown("---")
+        st.subheader("5. Adicionais de Sentença / Acordo")
+        multa_467 = st.checkbox("Aplicar Multa do Art. 467 CLT (50%)", value=False)
+        valores_pagos = st.number_input("Deduzir Valores Já Pagos (R$)", value=0.00, step=100.0)
+        hon_sucumbenciais = st.number_input("Honorários Sucumbenciais (%)", value=0.0, step=1.0)
+        hon_contratuais = st.number_input("Honorários Contratuais (%)", value=0.0, step=1.0)
 
     if not data_admissao or not data_demissao or salario_base <= 0 or ("Insalubridade" in adicional_ocupacional and salario_minimo <= 0):
-        st.info("Preencha os campos essenciais acima para iniciar a liquidação.")
+        st.info("👈 Preencha os campos essenciais na barra lateral para iniciar o cálculo.")
         return
     if data_admissao >= data_demissao:
-        st.warning("Atenção: A Admissão deve ser anterior à Demissão.")
+        st.error("⚠️ A Admissão deve ser anterior à Demissão.")
         return
 
     ano_demissao = data_demissao.year
+
     valor_adicional_mensal = 0.0
     if "10%" in adicional_ocupacional: valor_adicional_mensal = salario_minimo * 0.10
     elif "20%" in adicional_ocupacional: valor_adicional_mensal = salario_minimo * 0.20
@@ -814,40 +820,43 @@ def modulo_trabalhista_rescisao():
     c2.metric("Descontos Legais", f"R$ {tot_deducoes:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     if valores_pagos > 0: c3.metric("Valores Já Pagos", f"R$ -{valores_pagos:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
     
-    st.markdown(f"### LÍQUIDO A RECEBER: R$ {tot_liquido:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+    st.markdown(f"### 💰 LÍQUIDO A RECEBER: **R$ {tot_liquido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
+    
+    if hon_sucumbenciais > 0 or hon_contratuais > 0:
+        st.markdown("#### ⚖️ Honorários Calculados:")
+        if hon_sucumbenciais > 0: st.write(f"- **Sucumbenciais ({hon_sucumbenciais}%):** R$ {valor_hon_sucumbenciais:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+        if hon_contratuais > 0: st.write(f"- **Contratuais ({hon_contratuais}%):** R$ {valor_hon_contratuais:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
     info_contrato = {"admissao": data_admissao.strftime("%d/%m/%Y"), "demissao": data_demissao.strftime("%d/%m/%Y"), "ano_competencia": ano_demissao, "motivo": motivo_rescisao, "salario_base": salario_base, "salario_minimo": salario_minimo, "adicional_nome": adicional_ocupacional, "he_50": he_50, "he_100": he_100, "he_noturna": he_noturna, "faltas": faltas_injustificadas, "vt_status": "Sim" if descontar_vt else "Não", "remun_rescisoria": float(remuneracao_rescisoria), "multa_467": multa_467, "valores_pagos": float(valores_pagos)}
     dic_totais = {"bruto": float(tot_bruto), "deducoes": float(tot_deducoes), "liquido": float(tot_liquido), "fgts_deposito": (remuneracao_rescisoria * (dias_totais / 30)) * 0.08, "fgts_multa": ((remuneracao_rescisoria * (dias_totais / 30)) * 0.08) * 0.40 if direito_aviso else 0, "multa_477": float(remuneracao_base), "hon_sucumbenciais": float(valor_hon_sucumbenciais), "hon_contratuais": float(valor_hon_contratuais)}
     
     st.markdown("<br>", unsafe_allow_html=True)
     ex1, ex2 = st.columns(2)
-    with ex1: st.download_button("Baixar Excel", data=gerar_excel_trabalhista(df, info_contrato, dic_totais), file_name="Rescisao.xlsx", use_container_width=True)
-    with ex2: st.download_button("Baixar Laudo PDF", data=gerar_pdf_trabalhista(df, info_contrato, dic_totais), file_name="Laudo_Rescisao.pdf", use_container_width=True)
+    with ex1: st.download_button("📊 Baixar Excel", data=gerar_excel_trabalhista(df, info_contrato, dic_totais), file_name="Rescisao.xlsx", use_container_width=True)
+    with ex2: st.download_button("📄 Baixar Laudo PDF", data=gerar_pdf_trabalhista(df, info_contrato, dic_totais), file_name="Laudo_Rescisao.pdf", use_container_width=True)
 
 def modulo_trabalhista_adc58():
-    botao_voltar("Trabalhista")
-    st.header("Atualização Monetária (ADC 58 - STF)")
+    st.header("📈 Atualização Monetária (ADC 58 - STF)")
     st.write("Fatia automaticamente o período pré-judicial (IPCA-E) e o judicial (SELIC) conforme a jurisprudência vinculante.")
     
-    with st.container(border=True):
-        st.markdown("<h5>Parâmetros da Condenação</h5>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        valor_original = c1.number_input("Valor Histórico (R$)", value=0.00, step=100.0)
-        data_vencimento = c2.date_input("Vencimento da Verba", value=None, format="DD/MM/YYYY")
-        data_ajuizamento = c3.date_input("Ajuizamento da Ação", value=None, format="DD/MM/YYYY")
-
-        c4, c5, c6 = st.columns(3)
-        data_calculo = c4.date_input("Data da Atualização", value=date.today(), format="DD/MM/YYYY")
-        incluir_juros_pre = c5.checkbox("Juros Pré-Judiciais (1% a.m.)", value=False)
+    with st.sidebar:
+        st.subheader("Parâmetros da Condenação")
+        valor_original = st.number_input("Valor Histórico (R$)", value=0.00, step=100.0)
+        st.markdown("---")
+        data_vencimento = st.date_input("Data de Vencimento da Verba", value=None, format="DD/MM/YYYY")
+        data_ajuizamento = st.date_input("Data do Ajuizamento da Ação", value=None, format="DD/MM/YYYY")
+        data_calculo = st.date_input("Data da Atualização (Hoje)", value=date.today(), format="DD/MM/YYYY")
+        st.markdown("---")
+        incluir_juros_pre = st.checkbox("Incluir Juros Pré-Judiciais (1% a.m.)", value=False)
 
     if not data_vencimento or not data_ajuizamento or valor_original <= 0:
-        st.info("Preencha o valor original e as datas para iniciar a atualização.")
+        st.info("👈 Preencha o valor original e as datas essenciais no menu lateral para iniciar a atualização.")
         return
     if data_vencimento > data_ajuizamento:
-        st.warning("A Data de Vencimento deve ser anterior ao Ajuizamento.")
+        st.error("⚠️ Erro: A Data de Vencimento deve ser anterior ao Ajuizamento da Ação.")
         return
     if data_ajuizamento > data_calculo:
-        st.warning("A Data de Cálculo não pode ser anterior ao Ajuizamento.")
+        st.error("⚠️ Erro: A Data do Cálculo não pode ser anterior ao Ajuizamento.")
         return
 
     with st.spinner("Puxando matrizes oficiais do Banco Central (IPCA-E e SELIC)..."):
@@ -885,8 +894,8 @@ def modulo_trabalhista_adc58():
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(f"""
-        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #002B5B; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
-            <h4 style="color: #002B5B; margin-top: 0;">Fase Pré-Judicial (IPCA-E)</h4>
+        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #004080; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
+            <h4 style="color: #004080; margin-top: 0;">Fase Pré-Judicial (IPCA-E)</h4>
             <p style="margin-bottom: 5px;">De <b>{data_vencimento.strftime('%m/%Y')}</b> até <b>{data_ajuizamento.strftime('%m/%Y')}</b></p>
             <p style="margin-bottom: 5px;">Valor Original: R$ {valor_original:,.2f}</p>
             <p style="margin-bottom: 5px;">IPCA-E Acumulado: {(percentual_acumulado_ipcae - 1)*100:.4f}%</p>
@@ -897,8 +906,8 @@ def modulo_trabalhista_adc58():
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
-        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #4B5563; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
-            <h4 style="color: #4B5563; margin-top: 0;">Fase Judicial (SELIC)</h4>
+        <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
+            <h4 style="color: #28a745; margin-top: 0;">Fase Judicial (SELIC)</h4>
             <p style="margin-bottom: 5px;">De <b>{data_ajuizamento.strftime('%m/%Y')}</b> até <b>{data_calculo.strftime('%m/%Y')}</b></p>
             <p style="margin-bottom: 5px;">Base Judicial: R$ {subtotal_fase_pre:,.2f}</p>
             <p style="margin-bottom: 5px;">SELIC Acumulada (Simples): {soma_selic_acumulada*100:.4f}%</p>
@@ -908,8 +917,7 @@ def modulo_trabalhista_adc58():
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown(f"### DÍVIDA FINAL ATUALIZADA: R$ {valor_final_absoluto:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-
+    st.markdown(f"### 💰 Dívida Final Atualizada: **R$ {valor_final_absoluto:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
 
 # =================================================================
 # --- ROTEAMENTO DE PÁGINAS (SINGLE PAGE APPLICATION) ---
@@ -917,41 +925,48 @@ def modulo_trabalhista_adc58():
 menu = st.session_state.menu_principal
 ferramenta = st.session_state.ferramenta_ativa
 
-if menu == "Inicio":
-    st.title("Hub de Inteligência Pericial")
-    st.write("Plataforma definitiva de cálculos jurídicos automatizados.")
+# FIX DA BARRA LATERAL (Remoção total dos seletores repetidos e limpeza do layout)
+with st.sidebar:
+    if menu != "Início":
+        st.button("⬅️ VOLTAR AO INÍCIO", on_click=navegar_para, args=("Início", "Painel"), use_container_width=True)
+        st.markdown("---")
+
+# Lógica da Tela Principal
+if menu == "Início":
+    st.title("Bem-vindo ao Tolaris Calc")
+    st.write("Sua plataforma definitiva de inteligência pericial e cálculos jurídicos automatizados. Selecione a área de atuação abaixo ou no menu superior.")
     
     col1, col2 = st.columns(2)
     with col1:
-        with st.container(border=True):
-            st.markdown("<div class='tool-card-title'>Área Cível</div>", unsafe_allow_html=True)
-            st.markdown("<div class='tool-card-desc'>Auditoria de contratos, expurgos inflacionários, revisões bancárias e atualização de débitos judiciais.</div>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.button("ACESSAR MÓDULO CÍVEL", on_click=navegar_para, args=("Cível", "Painel"), type="primary", use_container_width=True)
+        st.markdown("<div style='background-color: white; padding: 25px; border-top: 5px solid #004080; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;'> <h2 style='color: #004080; margin-top:0;'>⚖️ Área Cível</h2> <p style='color: #555; font-size: 16px;'>Auditoria de contratos, expurgos inflacionários, revisões bancárias e atualização de débitos judiciais.</p> </div>", unsafe_allow_html=True)
+        st.button("ACESSAR MÓDULO CÍVEL", on_click=navegar_para, args=("Cível", "Painel"), use_container_width=True)
     with col2:
-        with st.container(border=True):
-            st.markdown("<div class='tool-card-title'>Área Trabalhista</div>", unsafe_allow_html=True)
-            st.markdown("<div class='tool-card-desc'>Liquidação de sentenças, rescisões expressas, integração de reflexos e atualização monetária ADC 58.</div>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.button("ACESSAR MÓDULO TRABALHISTA", on_click=navegar_para, args=("Trabalhista", "Painel"), type="primary", use_container_width=True)
+        st.markdown("<div style='background-color: white; padding: 25px; border-top: 5px solid #28a745; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;'> <h2 style='color: #28a745; margin-top:0;'>👷 Área Trabalhista</h2> <p style='color: #555; font-size: 16px;'>Liquidação de sentenças, rescisões expressas, integração de reflexos e atualização monetária ADC 58.</p> </div>", unsafe_allow_html=True)
+        st.button("ACESSAR MÓDULO TRABALHISTA", on_click=navegar_para, args=("Trabalhista", "Painel"), use_container_width=True)
 
 elif menu == "Cível":
     if ferramenta == "Painel":
-        st.title("Painel da Área Cível")
-        st.write("Escolha uma das calculadoras específicas para iniciar.")
+        st.title("⚖️ Painel da Área Cível")
+        st.write("Escolha uma das calculadoras específicas clicando nos cartões abaixo para iniciar.")
         st.markdown("<br>", unsafe_allow_html=True)
         
-        with st.container(border=True):
-            st.markdown("<div class='tool-card-title'>Revisão de Cheque Especial e Contratos</div>", unsafe_allow_html=True)
-            st.markdown("<div class='tool-card-desc'>Auditoria diária de extratos bancários. Isola a correção monetária, expurga juros abusivos e reconstrói o saldo devedor real utilizando as taxas do Banco Central.</div>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.button("Acessar Calculadora", on_click=navegar_para, args=("Cível", "Revisão de Cheque Especial"), key="btn_civ_1", type="primary")
+        st.markdown("""
+        <div class="tool-card">
+            <h4 style="color: #004080; margin-bottom: 5px;">💳 Revisão de Cheque Especial e Contratos</h4>
+            <p style="color: #666; font-size: 14px;">Auditoria diária de extratos bancários. Isola a correção monetária, expurga juros abusivos e reconstrói o saldo devedor real utilizando as taxas do Banco Central.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("Acessar Calculadora", on_click=navegar_para, args=("Cível", "Revisão de Cheque Especial"), key="btn_civ_1")
         
-        with st.container(border=True):
-            st.markdown("<div class='tool-card-title'>Atualização Monetária (TJ Padrão)</div>", unsafe_allow_html=True)
-            st.markdown("<div class='tool-card-desc'>Módulo para cumprimento de sentença cível. Aplica os índices inflacionários do Banco Central, juros de mora e honorários sucumbenciais ou contratuais automaticamente.</div>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.button("Acessar Calculadora", on_click=navegar_para, args=("Cível", "Atualização Monetária (TJ Padrão)"), key="btn_civ_2", type="primary")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="tool-card">
+            <h4 style="color: #004080; margin-bottom: 5px;">📈 Atualização Monetária (TJ Padrão)</h4>
+            <p style="color: #666; font-size: 14px;">Módulo para cumprimento de sentença cível. Aplica os índices inflacionários do Banco Central, juros de mora e honorários sucumbenciais ou contratuais automaticamente.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("Acessar Calculadora", on_click=navegar_para, args=("Cível", "Atualização Monetária (TJ Padrão)"), key="btn_civ_2")
 
     elif ferramenta == "Revisão de Cheque Especial":
         modulo_cheque_especial()
@@ -960,21 +975,27 @@ elif menu == "Cível":
 
 elif menu == "Trabalhista":
     if ferramenta == "Painel":
-        st.title("Painel da Área Trabalhista")
-        st.write("Escolha uma das calculadoras específicas para iniciar.")
+        st.title("👷 Painel da Área Trabalhista")
+        st.write("Escolha uma das calculadoras específicas clicando nos cartões abaixo para iniciar.")
         st.markdown("<br>", unsafe_allow_html=True)
         
-        with st.container(border=True):
-            st.markdown("<div class='tool-card-title'>Liquidação Expressa (Rescisão e Sentença)</div>", unsafe_allow_html=True)
-            st.markdown("<div class='tool-card-desc'>Cálculo automatizado de verbas rescisórias, integrando adicionais ocupacionais, médias de horas extras, DSR e aplicação progressiva de INSS e IRRF vigentes.</div>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.button("Acessar Calculadora", on_click=navegar_para, args=("Trabalhista", "Liquidação Expressa (Rescisão)"), key="btn_trab_1", type="primary")
+        st.markdown("""
+        <div class="tool-card tool-card-trabalhista">
+            <h4 style="color: #28a745; margin-bottom: 5px;">🧾 Liquidação Expressa (Rescisão e Sentença)</h4>
+            <p style="color: #666; font-size: 14px;">Cálculo automatizado de verbas rescisórias, integrando adicionais ocupacionais, médias de horas extras, DSR e aplicação progressiva de INSS e IRRF vigentes.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("Acessar Calculadora", on_click=navegar_para, args=("Trabalhista", "Liquidação Expressa (Rescisão)"), key="btn_trab_1")
         
-        with st.container(border=True):
-            st.markdown("<div class='tool-card-title'>Atualização ADC 58 (IPCA-E + SELIC)</div>", unsafe_allow_html=True)
-            st.markdown("<div class='tool-card-desc'>Atualização monetária e juros de acordos ou condenações. Segmenta automaticamente as fases pré-judicial e judicial, consumindo os índices oficiais em tempo real.</div>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.button("Acessar Calculadora", on_click=navegar_para, args=("Trabalhista", "Atualização ADC 58"), key="btn_trab_2", type="primary")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="tool-card tool-card-trabalhista">
+            <h4 style="color: #28a745; margin-bottom: 5px;">📈 Atualização ADC 58 (IPCA-E + SELIC)</h4>
+            <p style="color: #666; font-size: 14px;">Atualização monetária e juros de acordos ou condenações. Segmenta automaticamente as fases pré-judicial e judicial, consumindo os índices oficiais em tempo real.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("Acessar Calculadora", on_click=navegar_para, args=("Trabalhista", "Atualização ADC 58"), key="btn_trab_2")
 
     elif ferramenta == "Liquidação Expressa (Rescisão)":
         modulo_trabalhista_rescisao()
