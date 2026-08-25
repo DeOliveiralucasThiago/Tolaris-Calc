@@ -13,7 +13,7 @@ from dateutil.relativedelta import relativedelta
 # --- 1. CONFIGURAÇÃO DA PÁGINA E CSS CORPORATIVO ---
 # =================================================================
 st.set_page_config(
-    page_title="Tolaris Calc | Hub Pericial", 
+    page_title="Tolaris Calc", 
     layout="wide", 
     initial_sidebar_state="collapsed" # Oculta a barra lateral nativa
 )
