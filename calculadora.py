@@ -85,7 +85,6 @@ def buscar_indice_bcb(codigo_bcb):
     except:
         return pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
 
-# CORRIGIDO: Nome da função de 'obtener_...' para 'obter_...'
 @st.cache_data
 def obter_historico_salario_minimo():
     try:
@@ -224,14 +223,14 @@ def gerar_pdf_civel(info):
     
     pdf.cell(95, 6, f"Valor Historico Base: {info['Valor Original']}", border=0)
     pdf.cell(95, 6, f"Indice de Correcao: {info['Indice']}", border=0, ln=True)
-    pdf.cell(95, 6, f"Termo Inicial Correcao: {info['Data Vencimento']}", border=0)
-    pdf.cell(95, 6, f"Termo Inicial Juros: {info['Data Juros']}", border=0, ln=True)
+    pdf.cell(95, 6, f"Data do Vencimento: {info['Data Vencimento']}", border=0)
+    pdf.cell(95, 6, f"Data da Citacao (Juros): {info['Data Juros']}", border=0, ln=True)
     pdf.cell(0, 6, f"Data do Fechamento do Calculo: {info['Data Calculo']}", border=0, ln=True)
-    pdf.ln(5)
+    pdf.ln(4)
     
     pdf.set_font("Arial", style="B", size=12)
     pdf.set_text_color(0, 64, 128)
-    pdf.cell(0, 8, "2. DEMONSTRATIVO DE VALORES LIQUIDADOS", ln=True)
+    pdf.cell(0, 8, "2. DEMONSTRATIVO DA DIVIDA PRINCIPAL", ln=True)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=11)
     
@@ -239,18 +238,35 @@ def gerar_pdf_civel(info):
     pdf.cell(50, 6, info['Principal Corrigido'], border=0, align="R", ln=True)
     pdf.cell(130, 6, "Juros de Mora Computados no Periodo:", border=0)
     pdf.cell(50, 6, info['Juros de Mora'], border=0, align="R", ln=True)
+    pdf.cell(130, 6, f"Multa Contratual ({info['Perc_Multa_Contrato']}%):", border=0)
+    pdf.cell(50, 6, info['Multa Contratual'], border=0, align="R", ln=True)
     
     pdf.set_font("Arial", style="B", size=11)
     pdf.set_fill_color(240, 245, 250)
-    pdf.cell(130, 7, " SUB-TOTAL ATUALIZADO (Principal + Juros):", border=1, fill=True)
-    pdf.cell(50, 7, f"{info['Subtotal']} ", border=1, align="R", fill=True, ln=True)
+    pdf.cell(130, 7, " BASE DE EXECUTADA (Principal + Juros + Multa Contratual):", border=1, fill=True)
+    pdf.cell(50, 7, f"{info['Base Processual']} ", border=1, align="R", fill=True, ln=True)
+    
+    pdf.ln(4)
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.set_text_color(0, 64, 128)
+    pdf.cell(0, 8, "3. DESPESAS E CUSTAS PROCESSUAIS", ln=True)
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", size=11)
+    pdf.cell(130, 6, f"Custas Pagas em {info['Data Custas']} (Apenas Correcao):", border=0)
+    pdf.cell(50, 6, info['Custas Corrigidas'], border=0, align="R", ln=True)
+    
+    pdf.ln(4)
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.set_text_color(0, 64, 128)
+    pdf.cell(0, 8, "4. MULTAS E HONORARIOS (FASE DE CUMPRIMENTO)", ln=True)
+    pdf.set_text_color(0, 0, 0)
     pdf.set_font("Arial", size=11)
     
     pdf.cell(130, 6, "Multa por Inadimplemento Art. 523, par. 1o CPC (10%):", border=0)
     pdf.cell(50, 6, info['Multa Art. 523'], border=0, align="R", ln=True)
     pdf.cell(130, 6, "Honorarios de Execucao Art. 523, par. 1o CPC (10%):", border=0)
     pdf.cell(50, 6, info['Honorarios Art. 523'], border=0, align="R", ln=True)
-    pdf.cell(130, 6, f"Honorarios Advocaticios Ordinarios ({info['Perc_Hon']}%):", border=0)
+    pdf.cell(130, 6, f"Honorarios Advocaticios Comuns/Contratuais ({info['Perc_Hon']}%):", border=0)
     pdf.cell(50, 6, info['Honorarios Comuns'], border=0, align="R", ln=True)
     
     pdf.ln(4)
@@ -376,140 +392,44 @@ def gerar_pdf_trabalhista(df_rescisao, info_contrato, totais):
 # =================================================================
 # --- TELAS ESPECÍFICAS DAS FERRAMENTAS CÍVEIS --------------------
 # =================================================================
-def modulo_cheque_especial():
-    st.header("🕵️ Auditoria de Cheque Especial e Contratos")
-    
-    if 'reset_contador' not in st.session_state:
-        st.session_state.reset_contador = 0
-    def limpar_tabela():
-        st.session_state.reset_contador += 1
-    
-    CODIGOS_BCB = {"IGP-M": 189, "IPCA": 433, "INPC": 188, "INCC": 192}
-
-    with st.sidebar:
-        data_inicial = st.date_input("Data Inicial", value=None, min_value=date(1980, 1, 1), format="DD/MM/YYYY")
-        data_final = st.date_input("Data Final", value=None, min_value=date(1980, 1, 1), format="DD/MM/YYYY")
-        saldo_inicial = st.number_input("Saldo Inicial Negativo (R$)", value=0.00, step=100.0)
-        st.markdown("---")
-        opcoes_indices = ["Sem Atualização (Apenas Juros)"] + list(CODIGOS_BCB.keys())
-        indice_escolhido = st.selectbox("Índice de Atualização", opcoes_indices)
-        tipo_juros = st.radio("Método de Juros", ["Compostos", "Simples"])
-        taxa_juros = st.number_input("Taxa de Juros a.m. (%)", value=8.000, format="%.3f")
-
-        if indice_escolhido == "Sem Atualização (Apenas Juros)":
-            df_indices = pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
-        else:
-            codigo_atual = CODIGOS_BCB[indice_escolhido]
-            df_historico_completo = buscar_indice_bcb(codigo_atual)
-            if data_inicial:
-                ano_inicio = str(data_inicial.year)
-                df_filtrado = df_historico_completo[df_historico_completo['Mês/Ano'] >= f"{ano_inicio}-01"].copy() if not df_historico_completo.empty else pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
-            else:
-                df_filtrado = pd.DataFrame(columns=["Mês/Ano", "Índice (%)"])
-            df_indices = st.data_editor(df_filtrado, num_rows="dynamic", hide_index=True)
-
-    if not data_inicial or not data_final:
-        st.info("👈 Defina os parâmetros no menu lateral para iniciar.")
-        return
-    if data_inicial > data_final:
-        st.error("⚠️ A Data Inicial não pode ser posterior à Data Final.")
-        return
-
-    dias_totais = (data_final - data_inicial).days
-    datas_iniciais = [(data_inicial + timedelta(days=i)) for i in range(dias_totais + 1)]
-    df_lancamentos_iniciais = pd.DataFrame({"Data": datas_iniciais, "Débitos (-)": [0.00 for _ in range(len(datas_iniciais))], "Créditos (+)": [0.00 for _ in range(len(datas_iniciais))]})
-
-    df_lancamentos = st.data_editor(
-        df_lancamentos_iniciais, key=f"tabela_lancamentos_{st.session_state.reset_contador}", num_rows="dynamic", use_container_width=True, hide_index=True,
-        column_config={"Data": st.column_config.DateColumn("Data", min_value=date(1980, 1, 1), format="DD/MM/YYYY"), "Débitos (-)": st.column_config.NumberColumn("Débitos (-)", format="R$ %.2f"), "Créditos (+)": st.column_config.NumberColumn("Créditos (+)", format="R$ %.2f")}
-    )
-
-    col_btn1, col_btn2 = st.columns([3, 1])
-    with col_btn1:
-        btn_processar = st.button("PROCESSAR REVISÃO BANCÁRIA", type="primary", use_container_width=True)
-    with col_btn2:
-        st.button("🧹 Limpar Tabela", on_click=limpar_tabela, use_container_width=True)
-
-    if btn_processar:
-        dic_indices = {row["Mês/Ano"]: Decimal(str(row["Índice (%)"] / 100)) for _, row in df_indices.iterrows()}
-        dic_lancamentos = {}
-        for _, row in df_lancamentos.iterrows():
-            try:
-                data_str = pd.to_datetime(row["Data"], format="%d/%m/%Y").strftime("%Y-%m-%d")
-                dic_lancamentos[data_str] = {"debitos": Decimal(str(row["Débitos (-)"])), "creditos": Decimal(str(row["Créditos (+)"]))}
-            except: pass
-
-        memoria_calculo = []
-        saldo_atual = Decimal(str(saldo_inicial))
-        data_atual = data_inicial
-        col_taxa_nome = "Taxa de Atualização (%)" if indice_escolhido == "Sem Atualização (Apenas Juros)" else f"Taxa {indice_escolhido} (%)"
-        
-        while data_atual <= data_final:
-            str_data = data_atual.strftime("%Y-%m-%d")
-            mes_ano_anterior = (data_atual.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
-            saldo_inicio_dia = saldo_atual
-            valor_correcao, percentual_aplicado = Decimal('0.00'), Decimal('0.00')
-            
-            if data_atual.day == 1 and mes_ano_anterior in dic_indices:
-                percentual_aplicado = dic_indices[mes_ano_anterior]
-                valor_correcao = saldo_atual * percentual_aplicado
-                saldo_atual += valor_correcao
-                
-            lancamentos_dia = dic_lancamentos.get(str_data, {"debitos": Decimal('0.00'), "creditos": Decimal('0.00')})
-            saldo_atual = saldo_atual + lancamentos_dia["debitos"] - lancamentos_dia["creditos"]
-            
-            memoria_calculo.append({"Data": data_atual.strftime("%d/%m/%Y"), "Saldo Anterior": float(saldo_inicio_dia), col_taxa_nome: float(percentual_aplicado * 100), "Correção (R$)": float(valor_correcao), "Débitos (R$)": float(lancamentos_dia["debitos"]), "Créditos (R$)": float(lancamentos_dia["creditos"]), "Saldo Final Dia": float(saldo_atual)})
-            data_atual += timedelta(days=1)
-        
-        taxa_mensal_dec = Decimal(str(taxa_juros / 100))
-        taxa_periodo = (1 + taxa_mensal_dec) ** (Decimal(dias_totais) / Decimal(30)) - 1 if tipo_juros == "Compostos" else taxa_mensal_dec * (Decimal(dias_totais) / Decimal(30))
-        valor_juros = saldo_atual * taxa_periodo
-        saldo_final_absoluto = saldo_atual + valor_juros
-        
-        st.markdown("---")
-        st.subheader("Resumo da Dívida Recalculada")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Saldo Original Acumulado", f"R$ {float(saldo_atual):,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        c2.metric(f"Juros ({tipo_juros})", f"R$ {float(valor_juros):,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        c3.metric("Dívida Final", f"R$ {float(saldo_final_absoluto):,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-        
-        resumo_dict = {"Original": float(saldo_atual), "Juros": float(valor_juros), "Final": float(saldo_final_absoluto), "Dias": dias_totais}
-        df_mem = pd.DataFrame(memoria_calculo)
-        
-        ex1, ex2 = st.columns(2)
-        with ex1: st.download_button("📊 Baixar Planilha (Excel)", data=gerar_excel_bancario(pd.DataFrame([resumo_dict]), df_mem), file_name="Revisao_Bancaria.xlsx", use_container_width=True)
-        with ex2: st.download_button("📄 Baixar PDF Pericial", data=gerar_pdf_bancario(resumo_dict, df_mem, indice_escolhido, tipo_juros, taxa_juros), file_name="Laudo_Bancario.pdf", use_container_width=True)
-            
 def modulo_civel_atualizacao():
     st.header("📈 Atualização de Débitos Judiciais (Padrão TJ)")
-    st.write("Cálculo para cumprimento de sentença cível. Aplica correção monetária, juros moratórios e honorários advocatícios.")
+    st.write("Cálculo para cumprimento de sentença cível. Aplica correção monetária, juros moratórios, multas contratuais e honorários.")
     
     CODIGOS_BCB = {"INPC": 188, "IPCA-E": 10844, "IGP-M": 189, "SELIC": 4390}
 
     with st.sidebar:
-        st.subheader("1. Valor e Datas")
-        valor_original = st.number_input("Valor Histórico (R$)", value=0.00, step=100.0)
+        st.subheader("1. Valores e Datas do Principal")
+        valor_original = st.number_input("Valor Histórico do Principal (R$)", value=0.00, step=100.0)
         data_vencimento = st.date_input("Data do Vencimento (Correção)", value=None, format="DD/MM/YYYY")
         data_juros = st.date_input("Data da Citação (Juros)", value=None, format="DD/MM/YYYY")
         data_calculo = st.date_input("Data do Cálculo (Hoje)", value=date.today(), format="DD/MM/YYYY")
         
         st.markdown("---")
-        st.subheader("2. Fatores de Atualização")
-        indice_escolhido = st.selectbox("Índice de Correção", list(CODIGOS_BCB.keys()))
+        st.subheader("2. Despesas Processuais")
+        custas_pagas = st.number_input("Custas Pagas (R$)", value=0.00, step=50.0, help="Valor das custas iniciais a serem reembolsadas (Apenas Correção).")
+        data_custas = None
+        if custas_pagas > 0:
+            data_custas = st.date_input("Data do Pagamento das Custas", value=None, format="DD/MM/YYYY")
+
+        st.markdown("---")
+        st.subheader("3. Fatores de Atualização")
+        indice_escolhido = st.selectbox("Índice de Correção Monetária", list(CODIGOS_BCB.keys()))
         
         if indice_escolhido == "SELIC":
-            st.info("⚠️ A Taxa SELIC não cumula com Juros de Mora de 1% a.m.")
+            st.info("⚠️ A Taxa SELIC embute juros e correção. Juros de mora adicionais desabilitados.")
             aplicar_juros = False
             perc_juros = 0.0
         else:
-            aplicar_juros = st.checkbox("Aplicar Juros de Mora", value=True)
+            aplicar_juros = st.checkbox("Aplicar Juros de Mora no Principal", value=True)
             perc_juros = st.number_input("Juros ao Mês (%)", value=1.0, step=0.1) if aplicar_juros else 0.0
             
         st.markdown("---")
-        st.subheader("3. Acréscimos Legais e Honorários")
+        st.subheader("4. Multas e Honorários")
+        multa_contratual = st.number_input("Multa Contratual / Penal (%)", value=0.0, step=1.0, help="Aplicada sobre o Principal atualizado + Juros.")
         multa_523 = st.checkbox("Multa do Art. 523 do CPC (10%)", value=False)
         hon_523 = st.checkbox("Honorários do Art. 523 do CPC (10%)", value=False)
-        hon_comum = st.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0, help="Honorários de sucumbência ou contratuais incidentes sobre o montante atualizado.")
+        hon_comum = st.number_input("Honorários Advocatícios Comuns (%)", value=0.0, step=1.0, help="Honorários de sucumbência ou contratuais.")
 
     if not data_vencimento or not data_juros or valor_original <= 0:
         st.info("👈 Preencha o valor histórico e as datas no menu lateral para iniciar.")
@@ -518,76 +438,102 @@ def modulo_civel_atualizacao():
     if data_vencimento > data_calculo or data_juros > data_calculo:
         st.error("⚠️ Erro: As datas de vencimento/citação devem ser anteriores à data do cálculo.")
         return
+        
+    if custas_pagas > 0 and not data_custas:
+        st.warning("⚠️ Informe a data de pagamento das custas para a devida correção.")
+        return
 
     with st.spinner(f"Processando matriz {indice_escolhido} do Banco Central..."):
         codigo_atual = CODIGOS_BCB[indice_escolhido]
         df_indice_completo = buscar_indice_bcb(codigo_atual)
 
-    # Lógica de Correção Monetária
+    # Lógica de Correção do Principal
     valor_corrigido = valor_original
     fator_acumulado = 1.0
-    
     str_venc = data_vencimento.strftime('%Y-%m')
     str_calc = data_calculo.strftime('%Y-%m')
     
+    # Lógica de Correção das Custas
+    valor_custas_corrigidas = custas_pagas
+    fator_custas = 1.0
+    str_custas = data_custas.strftime('%Y-%m') if custas_pagas > 0 and data_custas else None
+    
     if not df_indice_completo.empty:
+        # Principal
         mask = (df_indice_completo['Mês/Ano'] >= str_venc) & (df_indice_completo['Mês/Ano'] < str_calc)
         df_fase = df_indice_completo[mask]
-        
         if indice_escolhido == "SELIC":
             soma_selic = df_fase['Índice (%)'].sum() / 100
             valor_corrigido = valor_original + (valor_original * soma_selic)
         else:
-            for _, row in df_fase.iterrows():
-                fator_acumulado *= (1 + (row['Índice (%)'] / 100))
+            for _, row in df_fase.iterrows(): fator_acumulado *= (1 + (row['Índice (%)'] / 100))
             valor_corrigido = valor_original * fator_acumulado
+            
+        # Custas (Sem juros)
+        if str_custas:
+            mask_custas = (df_indice_completo['Mês/Ano'] >= str_custas) & (df_indice_completo['Mês/Ano'] < str_calc)
+            df_fase_custas = df_indice_completo[mask_custas]
+            if indice_escolhido == "SELIC":
+                soma_selic_custas = df_fase_custas['Índice (%)'].sum() / 100
+                valor_custas_corrigidas = custas_pagas + (custas_pagas * soma_selic_custas)
+            else:
+                for _, row in df_fase_custas.iterrows(): fator_custas *= (1 + (row['Índice (%)'] / 100))
+                valor_custas_corrigidas = custas_pagas * fator_custas
 
-    # Lógica de Juros de Mora
+    # Juros de Mora (Somente Principal)
     valor_juros_mora = 0.0
     if indice_escolhido != "SELIC" and aplicar_juros:
         dias_juros = (data_calculo - data_juros).days
         if dias_juros > 0:
-            meses_juros = dias_juros / 30
-            valor_juros_mora = valor_corrigido * (meses_juros * (perc_juros / 100))
+            valor_juros_mora = valor_corrigido * ((dias_juros / 30) * (perc_juros / 100))
             
     subtotal_atualizado = valor_corrigido + valor_juros_mora
-
-    # Penalidades e Honorários
-    valor_multa_523 = subtotal_atualizado * 0.10 if multa_523 else 0.0
-    valor_hon_523 = subtotal_atualizado * 0.10 if hon_523 else 0.0
-    valor_hon_comum = subtotal_atualizado * (hon_comum / 100) if hon_comum > 0 else 0.0
     
-    total_acrescimos = valor_multa_523 + valor_hon_523 + valor_hon_comum
-    total_devido = subtotal_atualizado + total_acrescimos
+    # Multa Contratual sobre Dívida Atualizada
+    valor_multa_contratual = subtotal_atualizado * (multa_contratual / 100) if multa_contratual > 0 else 0.0
+    
+    # Base de Cálculo Processual = Principal Atualizado + Juros + Multa Contratual
+    base_processual = subtotal_atualizado + valor_multa_contratual
+
+    # Penalidades Processuais e Honorários
+    valor_multa_523 = base_processual * 0.10 if multa_523 else 0.0
+    valor_hon_523 = base_processual * 0.10 if hon_523 else 0.0
+    valor_hon_comum = base_processual * (hon_comum / 100) if hon_comum > 0 else 0.0
+    
+    total_acrescimos_processuais = valor_multa_523 + valor_hon_523 + valor_hon_comum
+    
+    # Dívida Final = Base Processual + Acréscimos + Custas Corrigidas
+    total_devido = base_processual + total_acrescimos_processuais + valor_custas_corrigidas
 
     # Interface Visual
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.markdown(f"""
         <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #004080; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
-            <h4 style="color: #004080; margin-top: 0;">Resumo da Atualização</h4>
-            <p style="margin-bottom: 5px;">Valor Histórico Original: R$ {valor_original:,.2f}</p>
-            <p style="margin-bottom: 5px;">Índice Aplicado: <b>{indice_escolhido}</b></p>
-            <p style="margin-bottom: 5px;">Principal Corrigido: R$ {valor_corrigido:,.2f}</p>
+            <h4 style="color: #004080; margin-top: 0;">1. Dívida Principal Atualizada</h4>
+            <p style="margin-bottom: 5px;">Valor Histórico: R$ {valor_original:,.2f}</p>
+            <p style="margin-bottom: 5px;">Principal Corrigido ({indice_escolhido}): R$ {valor_corrigido:,.2f}</p>
             <p style="margin-bottom: 5px;">Juros de Mora: R$ {valor_juros_mora:,.2f}</p>
+            <p style="margin-bottom: 5px;">Multa Contratual ({multa_contratual}%): R$ {valor_multa_contratual:,.2f}</p>
             <hr style="margin: 10px 0;">
-            <h5 style="color: #333; margin: 0;">Subtotal Atualizado: R$ {subtotal_atualizado:,.2f}</h5>
+            <h5 style="color: #333; margin: 0;">Base Processual Executada: R$ {base_processual:,.2f}</h5>
         </div>
         """, unsafe_allow_html=True)
         
     with col_t2:
         st.markdown(f"""
         <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px;">
-            <h4 style="color: #dc3545; margin-top: 0;">Fase de Execução / Honorários</h4>
+            <h4 style="color: #dc3545; margin-top: 0;">2. Custas, Penalidades e Honorários</h4>
+            <p style="margin-bottom: 5px;">Custas Pagas Atualizadas: R$ {valor_custas_corrigidas:,.2f}</p>
             <p style="margin-bottom: 5px;">Multa Art. 523 (10%): R$ {valor_multa_523:,.2f}</p>
             <p style="margin-bottom: 5px;">Honorários Art. 523 (10%): R$ {valor_hon_523:,.2f}</p>
             <p style="margin-bottom: 5px;">Honorários Comuns ({hon_comum}%): R$ {valor_hon_comum:,.2f}</p>
             <hr style="margin: 10px 0;">
-            <h5 style="color: #333; margin: 0;">Acréscimos Totais: R$ {total_acrescimos:,.2f}</h5>
+            <h5 style="color: #333; margin: 0;">Total Despesas/Acréscimos: R$ {(total_acrescimos_processuais + valor_custas_corrigidas):,.2f}</h5>
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown(f"### ⚖️ TOTAL GERAL DEVIDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
+    st.markdown(f"### ⚖️ TOTAL GERAL EXEQUENDO: **R$ {total_devido:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
 
     # Relatórios do Módulo Cível
     st.subheader("📥 Exportar Relatório de Atualização Monetária Cível")
@@ -600,6 +546,11 @@ def modulo_civel_atualizacao():
         "Principal Corrigido": f"R$ {valor_corrigido:,.2f}",
         "Juros de Mora": f"R$ {valor_juros_mora:,.2f}",
         "Subtotal": f"R$ {subtotal_atualizado:,.2f}",
+        "Perc_Multa_Contrato": str(multa_contratual),
+        "Multa Contratual": f"R$ {valor_multa_contratual:,.2f}",
+        "Base Processual": f"R$ {base_processual:,.2f}",
+        "Data Custas": data_custas.strftime("%d/%m/%Y") if data_custas else "Não informada",
+        "Custas Corrigidas": f"R$ {valor_custas_corrigidas:,.2f}",
         "Multa Art. 523": f"R$ {valor_multa_523:,.2f}",
         "Honorarios Art. 523": f"R$ {valor_hon_523:,.2f}",
         "Perc_Hon": str(hon_comum),
@@ -630,7 +581,7 @@ def modulo_trabalhista_rescisao():
         st.subheader("2. Adicionais e Jornada")
         adicional_ocupacional = st.selectbox("Adicionais Ocupacionais", ["Nenhum Adicional", "Insalubridade - Mínimo (10%)", "Insalubridade - Médio (20%)", "Insalubridade - Máximo (40%)", "Periculosidade (30%)"])
         
-        # FIX UX SOLICITADO: Renderização condicional do Salário Mínimo
+        # Renderização condicional do Salário Mínimo (Só aparece se houver insalubridade)
         salario_minimo = 0.0
         if "Insalubridade" in adicional_ocupacional:
             selecao_sm = st.selectbox("Ano/Valor do Salário Mínimo (API Banco Central)", list(historico_sm.keys()))
@@ -853,7 +804,6 @@ def modulo_trabalhista_adc58():
 menu = st.session_state.menu_principal
 ferramenta = st.session_state.ferramenta_ativa
 
-# FIX: Remoção dos menus antigos poluídos e botões na barra lateral.
 with st.sidebar:
     if menu != "Início":
         st.button("⬅️ VOLTAR AO INÍCIO", on_click=navegar_para, args=("Início", "Painel"), use_container_width=True)
