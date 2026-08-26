@@ -918,7 +918,7 @@ menu = st.session_state.menu_principal
 ferramenta = st.session_state.ferramenta_ativa
 
 if menu == "Inicio":
-    st.title("Hub de Inteligência Pericial")
+    st.title("Tolaris Calc")
     st.write("Plataforma definitiva de cálculos jurídicos automatizados.")
     
     col1, col2 = st.columns(2)
