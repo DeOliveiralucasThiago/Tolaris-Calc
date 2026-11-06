@@ -24,6 +24,7 @@
   }
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--texto);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:var(--serif);color:var(--marca);margin:0;line-height:1.2;letter-spacing:-.01em}

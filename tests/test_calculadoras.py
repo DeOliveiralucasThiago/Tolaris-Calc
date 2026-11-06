@@ -179,3 +179,47 @@ def test_entrada_virgula_brasileira_e_campo_obrigatorio():
     assert p["principal"] == Decimal("1234.56") and p["taxa"] == Decimal("1.5")
     with pytest.raises(ErroDeValidacao):
         converter(juros_taxas.META["campos"], {"modo": "montante", "taxa": "1", "prazo": "3"})
+
+
+# ------------------------------------------------------ débitos judiciais (TJES)
+from app.calculators import judicial_tjes  # noqa: E402
+
+
+def linha(res, inicio):
+    return next(Decimal(l["v"]) for l in res["tabelas"][-1]["linhas"] if l["d"].startswith(inicio))
+
+
+def test_tjes_exemplo_oficial_fator_manual():
+    """Cálculo real do TJES: principal 31.847,66 (19/03/2024) até 03/11/2026, fator 1,1167325072, custas 369,07.
+    Principal corrigido e custas batem ao centavo. Os juros divergem em R$ 0,02 do TJES (11.203,06 oficial
+    contra 11.203,08 aqui; o percentual de 31,50% é idêntico) — diferença de arredondamento ainda a calibrar."""
+    r = rodar(judicial_tjes, usa_correcao=True, usa_juros=True, usa_custas=True, principal="31847,66",
+              corr_data="2024-03-19", corr_fator="manual", corr_fator_manual="1,1167325072",
+              juros_data="2024-03-19", custas_valor="369,07", custas_data="2024-03-20", data_final="2026-11-03")
+    assert linha(r, "Principal corrigido") == Decimal("35565.32")
+    assert linha(r, "Juros do Código Civil (31,50 %)") == Decimal("11203.08")
+    assert linha(r, "Custas") == Decimal("412.15")
+    assert abs(linha(r, "Total Geral") - Decimal("47180.53")) <= Decimal("0.02")
+
+
+def test_tjes_juros_legais_viram_em_2003():
+    r = rodar(judicial_tjes, usa_correcao=True, usa_juros=True, principal="1000", corr_data="2002-12-11",
+              corr_fator="manual", corr_fator_manual="1", juros_data="2002-12-11", data_final="2003-02-11")
+    # 1 mês a 0,5% (até 10/01/2003) + 1 mês a 1% = 1,5%
+    assert linha(r, "Juros do Código Civil") == Decimal("15.00")
+
+
+def test_tjes_estrutura_completa_e_totais():
+    r = rodar(judicial_tjes, usa_correcao=True, usa_juros=False, usa_multa=True, usa_hon=True, usa_abater=True,
+              principal="1000", corr_data="2025-01-10", corr_fator="manual", corr_fator_manual="1,10",
+              multa_perc="10", abater_valor="100", hon_perc="10", data_final="2025-06-01")
+    # corrigido 1.100 + multa 110 = 1.210; abatendo 100 = 1.110; honorários 10% = 111; geral = 1.221
+    assert linha(r, "Subtotal 1") == Decimal("1210.00")
+    assert linha(r, "Total 1") == Decimal("1110.00")
+    assert linha(r, "Total 2") == Decimal("111.00")
+    assert linha(r, "Total Geral") == Decimal("1221.00")
+
+
+def test_tjes_indice_exige_fator_manual_antes_de_1999():
+    with pytest.raises(ErroDeValidacao):
+        rodar(judicial_tjes, usa_correcao=True, principal="1000", corr_data="1998-05-10", data_final="2025-01-10")

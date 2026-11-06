@@ -14,10 +14,10 @@ from ._comuns import CAMPO_INDICES_MANUAIS, OPCOES_INDICES, avisar_serie
 
 META = {
     "slug": "atualizacao-monetaria",
-    "titulo": "Atualização de débito",
-    "categoria": "Cível",
+    "titulo": "Atualização monetária",
+    "categoria": "Cálculos gerais",
     "icone": "scale",
-    "descricao": "Correção monetária por índice oficial, juros de mora, multa, custas e os acréscimos do "
+    "descricao": "Atualização com o índice que você escolher (IPCA, INPC, SELIC…): juros de mora, multa, custas e os acréscimos do "
                  "art. 523 do CPC, com memória mês a mês.",
     "campos": [
         campo("valor", "Valor original (R$)", "dinheiro", obrigatorio=True, minimo=0.01, grupo="Débito principal"),

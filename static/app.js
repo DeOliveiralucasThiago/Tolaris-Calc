@@ -156,6 +156,18 @@ function telaCalculadora(main, calc) {
     const caixa = el("div", { class: "grupo" });
     if (nome && !avanc) caixa.append(el("h2", {}, nome));
     campos.forEach((c) => { const n = constroiCampo(c, valores, atualiza, calc); nos[c.nome] = n; caixa.append(n); });
+    const comp = campos.filter((c) => c.composicao);
+    if (comp.length > 1) {
+      const alvo = () => !comp.every((c) => valores[c.nome]);
+      const b = el("button", { class: "mini", type: "button" }, "Marcar todos");
+      b.addEventListener("click", () => {
+        const marcar = alvo();
+        comp.forEach((c) => { valores[c.nome] = marcar; nos[c.nome].querySelector("input").checked = marcar; });
+        b.textContent = marcar ? "Desmarcar todos" : "Marcar todos"; atualiza();
+      });
+      nos[comp[comp.length - 1].nome].after(b);
+      b.textContent = comp.every((c) => valores[c.nome]) ? "Desmarcar todos" : "Marcar todos";
+    }
     form.append(avanc ? el("details", { class: "avancado" }, el("summary", {}, "Opções avançadas"), caixa) : caixa);
   }
   const btn = el("button", { class: "btn btn-primario", type: "submit" }, "Calcular");
