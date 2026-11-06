@@ -70,9 +70,9 @@ META = {
 
         campo("multa_perc", "Multa sobre o principal corrigido (%)", "percentual", obrigatorio=True, minimo=0,
               maximo=100, grupo="Multa", mostrar_se=_C("usa_multa")),
-        campo("abater_valor", "Valor a abater (R$)", "dinheiro", obrigatorio=True, minimo=0.01, grupo="Abatimento",
-              mostrar_se=_C("usa_abater"),
-              ajuda="Deduzido do Subtotal 1, no valor informado (sem correção)."),
+        campo("abater_valor", "Valor a ser abatido na data final do cálculo (R$)", "dinheiro", obrigatorio=True,
+              minimo=0.01, grupo="Abatimento", mostrar_se=_C("usa_abater"),
+              ajuda="Deduzido no valor informado, sem correção (conforme a calculadora do TJES)."),
         campo("hon_perc", "Honorários sobre o débito atualizado (%)", "percentual", obrigatorio=True, minimo=0,
               maximo=100, grupo="Honorários advocatícios", mostrar_se=_C("usa_hon")),
 
@@ -216,10 +216,7 @@ def calcular(p: dict) -> Resultado:
 
     if p["usa_523"]:
         res.aviso("Multa do art. 523 aplicada sobre o Total 1: a posição dessa linha no demonstrativo do TJES "
-                  "ainda não foi conferida. Verifique antes de usar.")
-    if p["usa_abater"]:
-        res.aviso("O abatimento é deduzido do Subtotal 1 no valor informado, sem correção: regra ainda não "
-                  "conferida contra a calculadora do TJES.")
+                  "ainda não foi conferida contra o TJES. Verifique antes de usar.")
     res.nota("Fator de correção: encadeamento de índices da Tabela de Atualização Monetária de Débitos Judiciais do "
              "TJES; a partir de 07/1999 o índice é o INPC/IBGE, acumulado de forma composta do mês da data inicial "
              "até o último mês fechado anterior à data final.")
