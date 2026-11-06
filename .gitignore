@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+data/cache/
+# arquivos que o Streamlit gerava e nunca devem ser versionados
+credentials.toml
+machine_id_v4
+.streamlit/

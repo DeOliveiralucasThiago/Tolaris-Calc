@@ -1,4 +1,6 @@
-pandas
-requests
-openpyxl
-fpdf2
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27
+python-dateutil>=2.9
+fpdf2>=2.8
+openpyxl>=3.1
