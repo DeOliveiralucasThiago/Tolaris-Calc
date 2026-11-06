@@ -23,7 +23,7 @@ python -m pytest -q                          # testes automatizados
 ## Publicar no Render
 
 1. Em render.com: **New → Blueprint** e aponte para este repositório (o `render.yaml` já configura tudo).
-2. Defina `TOLARIS_USUARIO` e `TOLARIS_SENHA` para exigir login (HTTP Basic). **Recomendado**: sem isso, qualquer pessoa com o link acessa a ferramenta.
+2. O acesso é livre (sem login): quem tiver o link usa a ferramenta. Se um dia precisar de senha, defina `TOLARIS_USUARIO` e `TOLARIS_SENHA` no painel do Render.
 3. No plano gratuito o serviço hiberna após inatividade (primeira consulta demora ~30 s). Use o plano *Starter* para uso diário.
 
 O sistema não guarda dados dos cálculos no servidor; só o cache dos índices do BCB (`data/cache`, descartável).

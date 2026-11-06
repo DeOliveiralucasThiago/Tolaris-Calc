@@ -56,6 +56,7 @@ async def cabecalhos(request: Request, call_next):
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
     resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("X-Robots-Tag", "noindex, nofollow")  # uso interno: fora dos buscadores
     if request.url.path.startswith("/api/"):
         resp.headers.setdefault("Cache-Control", "no-store")
     return resp

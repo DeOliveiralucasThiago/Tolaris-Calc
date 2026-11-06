@@ -8,10 +8,7 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
     healthCheckPath: /healthz
     autoDeploy: true
+    # Acesso livre (sem login). Para exigir senha no futuro, defina TOLARIS_USUARIO e TOLARIS_SENHA.
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
-      - key: TOLARIS_USUARIO     # login do escritório (deixe vazio para acesso livre)
-        sync: false
-      - key: TOLARIS_SENHA
-        sync: false
