@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tolaris Calc · Cálculos jurídicos e financeiros</title>
+<meta name="description" content="Calculadoras jurídicas e financeiras com memória de cálculo auditável: cheque especial, atualização de débitos, financiamentos, prazos e reajustes.">
+<meta name="theme-color" content="#0f2647">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<a class="skip" href="#conteudo">Ir para o conteúdo</a>
+<div class="app">
+  <aside class="lateral" id="lateral" aria-label="Navegação principal">
+    <a class="marca" href="#/" aria-label="Tolaris Calc – início">
+      <span class="marca-sel"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4v24M8 28h16M6 11h20M6 11l-3 8a4 4 0 0 0 6 0l-3-8m20 0-3 8a4 4 0 0 0 6 0l-3-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span><b>Tolaris</b> Calc</span>
+    </a>
+    <nav id="nav"></nav>
+    <div class="lateral-rodape">
+      <button class="btn-tema" id="tema" type="button" aria-label="Alternar tema claro/escuro">◐ Tema</button>
+      <p>Resultados são ferramentas de apoio. Confira índices, datas e teses antes de peticionar.</p>
+    </div>
+  </aside>
+  <div class="coluna">
+    <header class="topo">
+      <button class="menu" id="menu" type="button" aria-label="Abrir menu" aria-controls="lateral" aria-expanded="false">☰</button>
+      <span class="topo-titulo" id="topo-titulo">Tolaris Calc</span>
+    </header>
+    <main id="conteudo" tabindex="-1"></main>
+  </div>
+</div>
+<div class="veu" id="veu" hidden></div>
+<script src="/app.js" defer></script>
+</body>
+</html>

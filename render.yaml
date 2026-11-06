@@ -1,0 +1,14 @@
+# Blueprint do Render: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: tolaris-calc
+    runtime: python
+    plan: free            # troque por "starter" para evitar a hibernação após inatividade
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    healthCheckPath: /healthz
+    autoDeploy: true
+    # Acesso livre (sem login). Para exigir senha no futuro, defina TOLARIS_USUARIO e TOLARIS_SENHA.
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
