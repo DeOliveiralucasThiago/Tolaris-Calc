@@ -30,13 +30,17 @@ def test_todas_as_calculadoras_geram_pdf(api):
         "financiamento": {"valor": "5000", "parcelas": 6, "taxa_contratada": "2", "taxa_revisada": "1"},
         "prazos": {"data": "2025-03-03", "prazo": 10},
         "reajuste": {"valor": "1000", "data_reajuste": "2026-01-01"},
+        "taxa-legal": {"valor": "1000", "data_base": "2024-06-01", "data_calculo": "2025-03-10"},
+        "debitos-judiciais": {"usa_correcao": True, "usa_juros": True, "principal": "1000", "corr_data": "2024-01-10",
+                              "juros_data": "2024-01-10", "data_final": "2025-03-10"},
         "juros-taxas": {"modo": "montante", "principal": "100", "taxa": "1", "prazo": "6"},
         "atualizacao-monetaria": {"valor": "100", "data_base": "2025-01-01", "data_calculo": "2025-08-01"},
     }
     for slug, params in entradas.items():
         r = api.post(f"/api/calcular/{slug}", json={"parametros": params})
         assert r.status_code == 200, (slug, r.text)
-        assert api.post("/api/exportar/pdf", json={"resultado": r.json()}).content[:4] == b"%PDF"
+        assert api.post("/api/exportar/pdf", json={"resultado": r.json()}).content[:4] == b"%PDF", slug
+        assert api.post("/api/exportar/xlsx", json={"resultado": r.json()}).content[:2] == b"PK", slug
 
 
 def test_autenticacao_basic_opcional(api, monkeypatch):

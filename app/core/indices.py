@@ -32,6 +32,7 @@ class DefSerie:
     nome: str
     descricao: str
     acumulo: str = "composto"  # "composto" (produto) ou "soma" (SELIC, prática forense)
+    selecionavel: bool = True  # aparece nas listas de índices de correção das calculadoras
 
 
 # Códigos conferidos diretamente na API do BCB (IPCA-E = SGS 10764, que coincide com o IPCA-15).
@@ -42,6 +43,9 @@ SERIES: dict[str, DefSerie] = {
     "IGP-M": DefSerie(189, "IGP-M", "IGP-M – FGV, variação mensal"),
     "INCC": DefSerie(192, "INCC", "INCC – FGV, variação mensal"),
     "SELIC": DefSerie(4390, "SELIC", "Taxa Selic acumulada no mês", acumulo="soma"),
+    # Taxa legal (art. 406 do CC; Res. CMN 5.171/2024): max(fator Selic ÷ fator IPCA-15 − 1; 0), divulgada pelo BCB
+    "TAXA_LEGAL": DefSerie(29543, "TAXA_LEGAL", "Taxa Legal – art. 406 do Código Civil (juros, % ao mês)",
+                           acumulo="soma", selecionavel=False),
 }
 
 _lock = threading.Lock()
