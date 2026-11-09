@@ -42,8 +42,8 @@ function fmt(v, tipo) {
     case "percentual": return nf(v, 4) + "%";
     case "taxa": return nf(v, 4);
     case "fator": return nf(v, 8);
-    case "data": { const [a, m, d] = String(v).split("-"); return `${d}/${m}/${a}`; }
-    case "mes": { const [a, m] = String(v).split("-"); return `${m}/${a}`; }
+    case "data": { if (!/^\d{4}-\d{2}-\d{2}/.test(v)) return String(v); const [a, m, d] = String(v).split("-"); return `${d}/${m}/${a}`; }
+    case "mes": { if (!/^\d{4}-\d{2}/.test(v)) return String(v); const [a, m] = String(v).split("-"); return `${m}/${a}`; }
     case "inteiro": return /^-?\d+$/.test(String(v)) ? nf(v, 0) : String(v);
     default: return String(v);
   }

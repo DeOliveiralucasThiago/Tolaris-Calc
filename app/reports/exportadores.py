@@ -26,11 +26,12 @@ def formatar(valor, tipo: str) -> str:
         return num_br(valor, 4)
     if tipo == "fator":
         return num_br(valor, 8)
-    if tipo == "data":
-        return date.fromisoformat(str(valor)).strftime("%d/%m/%Y")
-    if tipo == "mes":
-        d = date.fromisoformat(str(valor))
-        return f"{d.month:02d}/{d.year}"
+    if tipo in ("data", "mes"):
+        try:
+            d = date.fromisoformat(str(valor))
+        except ValueError:      # rótulo de texto (ex.: "Total") numa coluna de data
+            return str(valor)
+        return d.strftime("%d/%m/%Y") if tipo == "data" else f"{d.month:02d}/{d.year}"
     if tipo == "inteiro":
         return str(valor) if isinstance(valor, str) and not valor.lstrip("-").isdigit() else f"{int(D(valor)):,}".replace(",", ".")
     return str(valor)
@@ -131,7 +132,10 @@ def _num(valor, tipo):
     if tipo == "inteiro" and str(valor).lstrip("-").isdigit():
         return int(valor)
     if tipo in ("data", "mes"):
-        return date.fromisoformat(str(valor))
+        try:
+            return date.fromisoformat(str(valor))
+        except ValueError:
+            return valor
     return valor
 
 

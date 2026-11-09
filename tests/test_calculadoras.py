@@ -223,3 +223,38 @@ def test_tjes_estrutura_completa_e_totais():
 def test_tjes_indice_exige_fator_manual_antes_de_1999():
     with pytest.raises(ErroDeValidacao):
         rodar(judicial_tjes, usa_correcao=True, principal="1000", corr_data="1998-05-10", data_final="2025-01-10")
+
+
+# ------------------------------------------------- Taxa Legal (Lei 14.905/2024)
+from app.calculators import taxa_legal  # noqa: E402
+
+
+def test_taxa_legal_debito_posterior_a_lei():
+    # série sintética: 1% ao mês em tudo. Correção IPCA jan–mar/2025 = 1,01^3; Taxa Legal pro rata:
+    # jan 21/31 + fev 28/28 + mar 31/31 + abr 10/30 = 3,010753%
+    r = rodar(taxa_legal, valor="1000", data_base="2025-01-10", data_calculo="2025-04-10")
+    assert kpi(r, "Valor corrigido") == Decimal("1030.30")
+    assert kpi(r, "Juros – Taxa Legal") == Decimal("31.02")
+    assert kpi(r, "Total atualizado") == Decimal("1061.32")
+
+
+def test_taxa_legal_transicao_agosto_2024():
+    # 20/08 a 05/09/2024: regime anterior 9 dias (0,3% a.m.→0,3 mês) + TL dias 30 e 31/08 (2/31) e 01–05/09 (5/30)
+    r = rodar(taxa_legal, valor="1000", data_base="2024-08-20", data_calculo="2024-09-05", indice_anterior="INPC",
+              juros_anterior="1")
+    assert kpi(r, "Valor corrigido") == Decimal("1010.00")
+    assert kpi(r, "Juros – regime anterior") == Decimal("3.03")
+    assert kpi(r, "Juros – Taxa Legal") == Decimal("2.33")  # 1.010 x 0,231183% = 2,33495
+
+
+def test_taxa_legal_modo_selic_nao_tem_juros_antigos():
+    r = rodar(taxa_legal, valor="1000", data_base="2024-06-10", data_calculo="2024-09-30", regime_anterior="selic")
+    assert not any(k["rotulo"] == "Juros – regime anterior" for k in r["resumo"])
+    # SELIC (soma) jun+jul+ago = 3%, depois IPCA de setembro não entra (mês anterior ao do cálculo é set → só ago)
+    assert kpi(r, "Valor corrigido") == Decimal("1030.00")
+
+
+def test_taxa_legal_antes_da_vigencia_avisa():
+    r = rodar(taxa_legal, valor="1000", data_base="2024-01-10", data_calculo="2024-06-10")
+    assert any("anterior a 30/08/2024" in a for a in r["avisos"])
+    assert not any(k["rotulo"] == "Juros – Taxa Legal" and Decimal(k["valor"]) != 0 for k in r["resumo"])

@@ -3,7 +3,7 @@ from __future__ import annotations
 from ..core.campos import campo, opcoes
 from ..core.indices import SERIES, Serie
 
-OPCOES_INDICES = [(k, v.descricao) for k, v in SERIES.items()]
+OPCOES_INDICES = [(k, v.descricao) for k, v in SERIES.items() if v.selecionavel]
 
 CAMPO_INDICES_MANUAIS = campo(
     "indices_manuais", "Índices informados manualmente (opcional)", "tabela", [],
