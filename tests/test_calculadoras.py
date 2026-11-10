@@ -370,3 +370,56 @@ def test_honorarios_rateio_acima_de_100_e_erro_e_percentual_fora_da_faixa_avisa(
         rodar(honorarios, valor_base="1000", rateio=[{"nome": "A", "pct": "70"}, {"nome": "B", "pct": "40"}])
     r = rodar(honorarios, valor_base="1000", sucumbencia="percentual", suc_pct="25")
     assert any("10% a 20%" in a for a in r["avisos"])
+
+
+# ------------------------------------------------------ cartão de crédito (rotativo)
+from app.calculators import cartao  # noqa: E402
+
+
+def test_cartao_juros_simples_30_dias():
+    r = rodar(cartao, data_inicial="2025-01-01", data_final="2025-01-31", saldo_inicial="1000", taxa_cobrada="10",
+              regime="simples", revisada_origem="nenhuma")
+    assert kpi(r, "Dívida final (taxa cobrada)") == Decimal("1100.00")
+
+
+def test_cartao_multa_e_mora():
+    r = rodar(cartao, data_inicial="2025-01-01", data_final="2025-01-31", saldo_inicial="1000", taxa_cobrada="10",
+              regime="simples", multa="2", mora="1", revisada_origem="nenhuma")
+    # 1000 + juros 100 + multa 20 + mora (1% a.m. x 30 dias) 10
+    assert kpi(r, "Dívida final (taxa cobrada)") == Decimal("1130.00")
+    assert kpi(r, "Multa e juros de mora") == Decimal("30.00")
+
+
+def test_cartao_limite_de_100_por_cento():
+    r = rodar(cartao, data_inicial="2025-01-01", data_final="2025-12-27", saldo_inicial="1000", taxa_cobrada="10",
+              regime="simples", revisada_origem="nenhuma")       # 360 dias: 120% de juros
+    assert kpi(r, "Juros remuneratórios") == Decimal("1200.00")
+    assert kpi(r, "Dívida final (taxa cobrada)") == Decimal("2000.00")
+    assert kpi(r, "Excesso cortado") == Decimal("-200.00")
+    sem = rodar(cartao, data_inicial="2025-01-01", data_final="2025-12-27", saldo_inicial="1000", taxa_cobrada="10",
+                regime="simples", revisada_origem="nenhuma", limitar=False)
+    assert kpi(sem, "Dívida final (taxa cobrada)") == Decimal("2200.00")
+
+
+def test_cartao_comparacao_com_taxa_media_do_bcb():
+    # série sintética: média = 1,00% a.m.
+    r = rodar(cartao, data_inicial="2025-01-01", data_final="2025-01-31", saldo_inicial="1000", taxa_cobrada="10",
+              regime="simples", revisada_origem="media_bcb")
+    assert kpi(r, "Dívida final (taxa de comparação)") == Decimal("1010.00")
+    assert kpi(r, "Diferença") == Decimal("90.00")
+    assert kpi(r, "Taxa cobrada ÷") == Decimal("10.00000000")
+
+
+def test_cartao_pagamento_abate_e_aviso_de_vigencia():
+    r = rodar(cartao, data_inicial="2023-06-01", data_final="2023-06-11", saldo_inicial="1000", taxa_cobrada="3",
+              regime="simples", revisada_origem="nenhuma",
+              lancamentos=[{"data": "2023-06-01", "tipo": "C", "valor": "400"}])
+    assert kpi(r, "Juros remuneratórios") == Decimal("6.00")     # 600 x 0,1%/dia x 10 dias
+    assert any("03/01/2024" in a for a in r["avisos"])
+
+
+def test_cartao_aviso_quando_limite_atinge_os_dois_cenarios():
+    r = rodar(cartao, data_inicial="2025-01-01", data_final="2025-12-27", saldo_inicial="1000", taxa_cobrada="10",
+              regime="simples", revisada_origem="informada", taxa_revisada="9")
+    assert any("também no cenário de comparação" in a for a in r["avisos"])
+    assert any(a.startswith("Os juros e encargos (R$ 1.200,00)") for a in r["avisos"])
