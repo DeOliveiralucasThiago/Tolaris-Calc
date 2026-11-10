@@ -4,13 +4,17 @@ Calculadoras jurídicas e financeiras para o escritório, com **memória de cál
 
 | Calculadora | O que faz |
 |---|---|
-| **Cheque especial** | Evolução diária do saldo devedor (juros, correção, lançamentos) e comparação *taxa cobrada × taxa revisada* |
-| **Atualização de débito** | Correção por IPCA/INPC/IPCA-E/IGP-M/INCC/SELIC, juros de mora, multa, custas e acréscimos do art. 523 CPC |
+| **Débitos judiciais (modelo TJES)** | Atualização no padrão da Corregedoria do TJES: correção (INPC), Juros Legais, custas, multa, abatimento e honorários |
+| **Taxa Legal (Lei 14.905/2024)** | Correção pelo IPCA e juros pela Taxa Legal do BCB, com a transição de 30/08/2024 |
+| **Pensão alimentícia** | Parcelas em atraso (valor fixo ou % do salário mínimo), correção e juros por parcela, pagamentos e Súmula 309/STJ |
+| **Honorários e êxito** | Fixos e êxito, sucumbência do art. 85 do CPC (inclusive escalonada contra a Fazenda), impostos e rateio |
+| **Atualização monetária** | Índice à escolha (IPCA, INPC, IPCA-E, IGP-M, INCC, SELIC), juros, multa, custas e acréscimos do art. 523 |
+| **Cheque especial** | Evolução diária do saldo devedor e comparação *taxa cobrada × taxa revisada* |
 | **Financiamento e empréstimo** | Price/SAC, taxa efetivamente embutida na parcela cobrada, revisão e restituição (simples/dobro) |
 | **Reajuste de aluguel/contratos** | Índice acumulado na janela contratual, teto e comparativo entre índices |
 | **Juros e taxas** | Montante (simples/composto), conversão de taxas, taxa implícita |
 | **Prazos e datas** | Dias úteis (CPC), corridos, meses e anos; feriados, recesso 20/12–20/01 e feriados locais |
-| **Índices oficiais** | Consulta das séries do Banco Central usadas nos cálculos |
+| **Índices oficiais** | Consulta das séries do Banco Central usadas nos cálculos (inclui Taxa Legal e salário mínimo) |
 
 ## Como rodar
 
@@ -49,7 +53,10 @@ tests/                 resultados conferidos à mão
 - Índices vêm do SGS/Banco Central com cache em disco. Se o BCB cair, usa a última cópia **e avisa**. Mês sem índice divulgado
   é tratado como 0 % **com aviso explícito** (nunca silencioso) e pode ser informado manualmente em *Opções avançadas*.
 - Cada resultado lista a **metodologia e as premissas** aplicadas; os parâmetros que variam por tribunal são escolhas do usuário.
-- Códigos SGS conferidos na API: IPCA 433, INPC 188, IPCA-E 10764, IGP-M 189, INCC 192, SELIC mensal 4390.
+- Códigos SGS conferidos na API: IPCA 433, INPC 188, IPCA-E 10764, IGP-M 189, INCC 192, SELIC mensal 4390, Taxa Legal 29543
+  (fórmula conferida na Resolução CMN 5.171/2024) e salário mínimo 1619.
+- Pendências de validação conhecidas: juros do modelo TJES divergem R$ 0,02 do exemplo oficial; multa do art. 523 no modelo TJES
+  e pensão alimentícia ainda não foram comparadas com cálculos oficiais.
 
 > Ferramenta de apoio ao cálculo. A parametrização jurídica (índice, marco inicial, taxa devida, calendário do tribunal)
 > deve ser validada pelo advogado responsável.

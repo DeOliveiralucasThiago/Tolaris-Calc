@@ -317,3 +317,56 @@ def test_pensao_criterio_lei_14905_roda():
 def test_pensao_sem_parcela_vencida_e_erro():
     with pytest.raises(ErroDeValidacao):
         rodar(pensao, valor_mensal="100", primeiro_venc="2025-05-10", data_calculo="2025-03-10")
+
+
+# ----------------------------------------------------------------- honorários
+from app.calculators import honorarios  # noqa: E402
+
+
+def test_honorarios_exito_e_sucumbencia_percentual():
+    r = rodar(honorarios, valor_base="100000", exito_pct="20", sucumbencia="percentual", suc_pct="10")
+    assert kpi(r, "Honorários de êxito") == Decimal("20000.00")
+    assert kpi(r, "Honorários sucumbenciais") == Decimal("10000.00")
+    assert kpi(r, "Total de honorários") == Decimal("30000.00")
+    assert kpi(r, "Líquido ao cliente") == Decimal("80000.00")
+
+
+def test_honorarios_fixos_abatem_do_exito():
+    r = rodar(honorarios, valor_base="100000", exito_pct="20", fixos="5000", fixos_abatem=True)
+    assert kpi(r, "Honorários de êxito") == Decimal("15000.00")
+    assert kpi(r, "Total contratual") == Decimal("20000.00")
+
+
+def test_honorarios_fixos_maiores_que_exito_nao_ficam_negativos():
+    r = rodar(honorarios, valor_base="10000", exito_pct="10", fixos="3000", fixos_abatem=True)
+    assert kpi(r, "Honorários de êxito") == 0
+    assert any("superam o êxito" in a for a in r["avisos"])
+
+
+def test_honorarios_base_liquida_de_despesas():
+    r = rodar(honorarios, valor_base="100000", despesas="10000", exito_pct="20", exito_base="liquido")
+    assert kpi(r, "Honorários de êxito") == Decimal("18000.00")
+    assert kpi(r, "Líquido ao cliente") == Decimal("72000.00")      # 100.000 − 18.000 − 10.000
+
+
+def test_honorarios_fazenda_escalonada():
+    # SM = 1.000; base 300.000 = 300 SM: 200 SM a 10% + 100 SM a 8% (mínimos) = 28.000
+    kw = dict(valor_base="300000", sucumbencia="fazenda", sm="1000")
+    assert kpi(rodar(honorarios, **kw), "Honorários sucumbenciais") == Decimal("28000.00")
+    assert kpi(rodar(honorarios, faz_posicao="max", **kw), "Honorários sucumbenciais") == Decimal("50000.00")
+    assert kpi(rodar(honorarios, faz_posicao="med", **kw), "Honorários sucumbenciais") == Decimal("39000.00")
+
+
+def test_honorarios_impostos_e_rateio():
+    r = rodar(honorarios, valor_base="100000", exito_pct="10", impostos="10",
+              rateio=[{"nome": "Ana", "pct": "60"}, {"nome": "Bruno", "pct": "30"}])
+    assert kpi(r, "Líquido dos honorários") == Decimal("9000.00")
+    dist = {l["nome"]: Decimal(l["valor"]) for l in r["tabelas"][-1]["linhas"]}
+    assert dist == {"Ana": Decimal("5400.00"), "Bruno": Decimal("2700.00"), "Escritório (saldo)": Decimal("900.00")}
+
+
+def test_honorarios_rateio_acima_de_100_e_erro_e_percentual_fora_da_faixa_avisa():
+    with pytest.raises(ErroDeValidacao):
+        rodar(honorarios, valor_base="1000", rateio=[{"nome": "A", "pct": "70"}, {"nome": "B", "pct": "40"}])
+    r = rodar(honorarios, valor_base="1000", sucumbencia="percentual", suc_pct="25")
+    assert any("10% a 20%" in a for a in r["avisos"])
