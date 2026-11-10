@@ -82,6 +82,45 @@ def _taxa_legal(serie_tl, inicio_excl: date, fim: date, res: Resultado):
     return total, linhas
 
 
+def atualizar(valor, base_dt: date, juros_dt: date, final: date, *, inicio: str, selic_modo: bool,
+              indice_anterior: str, juros_anterior, res: Resultado) -> dict:
+    """Motor reutilizável: corrige `valor` e apura os juros de uma obrigação, com a transição de 30/08/2024.
+    Devolve os componentes sem arredondar, mais as memórias (para quem quiser exibi-las)."""
+    primeiro = ym(base_dt) if inicio == "mes_base" else mes_seguinte(ym(base_dt))
+    ultimo = mes_anterior(ym(final))
+    fim_a = min(ultimo, MES_TRANSICAO)
+    ini_b = max(primeiro, mes_seguinte(MES_TRANSICAO))
+
+    fator_a, ac_a = UM, None
+    if primeiro <= fim_a:
+        nome_a = "SELIC" if selic_modo else indice_anterior
+        s_a = resolver(nome_a)
+        ac_a = acumular(s_a, primeiro, fim_a, "soma" if selic_modo else "composto")
+        avisar_serie(res, s_a, ac_a)
+        fator_a = ac_a.fator
+    ac_b = None
+    fator_b = UM
+    if ini_b <= ultimo:
+        s_b = resolver("IPCA")
+        ac_b = acumular(s_b, ini_b, ultimo, "composto")
+        avisar_serie(res, s_b, ac_b)
+        fator_b = ac_b.fator
+    corrigido = valor * fator_a * fator_b
+
+    perc_antigo = ZERO
+    if not selic_modo and juros_dt <= ULTIMO_DIA_ANTIGO:
+        perc_antigo = _periodo_meses(juros_dt, min(final, ULTIMO_DIA_ANTIGO)) * pct(juros_anterior or ZERO)
+    perc_tl, linhas_tl = ZERO, []
+    if final >= VIGENCIA:
+        serie_tl = resolver("TAXA_LEGAL")
+        avisar_serie(res, serie_tl)
+        pct_tl, linhas_tl = _taxa_legal(serie_tl, max(juros_dt, ULTIMO_DIA_ANTIGO), final, res)
+        perc_tl = pct_tl / 100
+    return {"corrigido": corrigido, "fator": fator_a * fator_b, "perc_antigo": perc_antigo, "perc_tl": perc_tl,
+            "ac_a": ac_a, "ac_b": ac_b, "linhas_tl": linhas_tl,
+            "juros_antigo": corrigido * perc_antigo, "juros_tl": corrigido * perc_tl}
+
+
 def calcular(p: dict) -> Resultado:
     base_dt, final = p["data_base"], p["data_calculo"]
     juros_dt = p["data_juros"] or base_dt
@@ -93,39 +132,14 @@ def calcular(p: dict) -> Resultado:
     res = Resultado("Taxa Legal – Lei 14.905/2024")
     valor = p["valor"]
     selic_modo = p["regime_anterior"] == "selic"
-
-    primeiro = ym(base_dt) if p["inicio"] == "mes_base" else mes_seguinte(ym(base_dt))
-    ultimo = mes_anterior(ym(final))
-    fim_a = min(ultimo, MES_TRANSICAO)
-    ini_b = max(primeiro, mes_seguinte(MES_TRANSICAO))
-
-    # ---- correção: regime anterior (até 08/2024) e IPCA (de 09/2024 em diante)
-    fator_a = UM
-    ac_a = None
-    if primeiro <= fim_a:
-        nome_a = "SELIC" if selic_modo else p["indice_anterior"]
-        s_a = resolver(nome_a)
-        ac_a = acumular(s_a, primeiro, fim_a, "soma" if selic_modo else "composto")
-        avisar_serie(res, s_a, ac_a)
-        fator_a = ac_a.fator
-    s_b = resolver("IPCA")
-    ac_b = acumular(s_b, ini_b, ultimo, "composto")
-    avisar_serie(res, s_b, ac_b)
-    corrigido = arred(valor * fator_a * ac_b.fator)
-
-    # ---- juros
-    perc_antigo = ZERO
-    if not selic_modo and juros_dt <= ULTIMO_DIA_ANTIGO:
-        perc_antigo = _periodo_meses(juros_dt, min(final, ULTIMO_DIA_ANTIGO)) * pct(p["juros_anterior"] or ZERO)
-    perc_tl, linhas_tl = ZERO, []
-    if final >= VIGENCIA:
-        serie_tl = resolver("TAXA_LEGAL")
-        avisar_serie(res, serie_tl)
-        perc_tl_pct, linhas_tl = _taxa_legal(serie_tl, max(juros_dt, ULTIMO_DIA_ANTIGO), final, res)
-        perc_tl = perc_tl_pct / 100
-    else:
+    r = atualizar(valor, base_dt, juros_dt, final, inicio=p["inicio"], selic_modo=selic_modo,
+                  indice_anterior=p["indice_anterior"], juros_anterior=p["juros_anterior"], res=res)
+    ac_a, ac_b, linhas_tl = r["ac_a"], r["ac_b"], r["linhas_tl"]
+    perc_antigo, perc_tl, fator = r["perc_antigo"], r["perc_tl"], r["fator"]
+    if final < VIGENCIA:
         res.aviso("A data do cálculo é anterior a 30/08/2024: a Lei 14.905/2024 ainda não era aplicável e só o "
                   "regime anterior foi calculado.")
+    corrigido = arred(r["corrigido"])
     juros_antigo = arred(corrigido * perc_antigo)
     juros_tl = arred(corrigido * perc_tl)
     juros = juros_antigo + juros_tl
@@ -142,7 +156,7 @@ def calcular(p: dict) -> Resultado:
               f"{p['indice_anterior']} + juros simples de {p['juros_anterior']}% a.m.")
 
     res.kpi("Total atualizado", total, destaque=True)
-    res.kpi("Valor corrigido", corrigido, nota=f"Fator {fator_a * ac_b.fator:.8f}")
+    res.kpi("Valor corrigido", corrigido, nota=f"Fator {fator:.8f}")
     res.kpi("Juros – Taxa Legal", juros_tl, nota=f"{arred(perc_tl * 100, 6)}% acumulado (simples)".replace(".", ","))
     if juros_antigo or (not selic_modo and juros_dt <= ULTIMO_DIA_ANTIGO):
         res.kpi("Juros – regime anterior", juros_antigo, nota=f"{arred(perc_antigo * 100, 4)}%".replace(".", ","))
@@ -155,7 +169,7 @@ def calcular(p: dict) -> Resultado:
         res.tabela("Memória da correção – regime anterior (até 08/2024)", [("mes", "Mês", "mes"),
                    ("indice", "Índice (%)", "taxa"), ("acumulado", "Acumulado (%)", "taxa")],
                    [{k: l[k] for k in ("mes", "indice", "acumulado")} for l in ac_a.linhas], recolhida=True)
-    if ac_b.linhas:
+    if ac_b and ac_b.linhas:
         res.tabela("Memória da correção – IPCA (de 09/2024)", [("mes", "Mês", "mes"), ("indice", "IPCA (%)", "taxa"),
                    ("acumulado", "Acumulado (%)", "taxa")],
                    [{k: l[k] for k in ("mes", "indice", "acumulado")} for l in ac_b.linhas], recolhida=True)

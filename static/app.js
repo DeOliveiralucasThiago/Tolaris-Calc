@@ -410,8 +410,8 @@ async function telaIndices(main) {
       const d = await (await api(`/api/indices/${encodeURIComponent(sel.value)}${forcar ? "?atualizar=true" : ""}`)).json();
       caixa.innerHTML = ""; const corpo = el("div", { class: "corpo-res" });
       if (d.origem === "cache") corpo.append(el("div", { class: "aviso" }, `Banco Central indisponível; exibindo cópia salva em ${d.atualizado_em}.`));
-      corpo.append(el("p", {}, el("span", { class: "pill" }, d.origem === "bcb" ? "Banco Central" : "Cópia salva"), ` Consulta em ${d.atualizado_em} · último mês: ${fmt(d.ultimo_mes + "-01", "mes")} · acumulação: ${d.acumulo === "soma" ? "soma simples" : "composta"}`));
-      corpo.insertAdjacentHTML("beforeend", tabelaHTML({ colunas: [{ chave: "mes", rotulo: "Mês", tipo: "mes" }, { chave: "indice", rotulo: "Variação no mês (%)", tipo: "taxa" }], linhas: d.valores.map((v) => ({ mes: v.mes + "-01", indice: v.indice })) }));
+      corpo.append(el("p", {}, el("span", { class: "pill" }, d.origem === "bcb" ? "Banco Central" : "Cópia salva"), ` Consulta em ${d.atualizado_em} · último mês: ${fmt(d.ultimo_mes + "-01", "mes")}${d.unidade === "R$" ? "" : " · acumulação: " + (d.acumulo === "soma" ? "soma simples" : "composta")}`));
+      corpo.insertAdjacentHTML("beforeend", tabelaHTML({ colunas: [{ chave: "mes", rotulo: "Mês", tipo: "mes" }, { chave: "indice", rotulo: d.unidade === "R$" ? "Valor vigente (R$)" : "Variação no mês (%)", tipo: d.unidade === "R$" ? "dinheiro" : "taxa" }], linhas: d.valores.map((v) => ({ mes: v.mes + "-01", indice: v.indice })) }));
       caixa.append(corpo);
     } catch (e) { caixa.innerHTML = ""; caixa.append(el("div", { class: "corpo-res" }, el("div", { class: "erro" }, e.message))); }
   };

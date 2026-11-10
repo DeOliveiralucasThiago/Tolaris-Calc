@@ -133,7 +133,7 @@ def indice(nome: str, atualizar: bool = False):
     s = obter_serie(nome, forcar=atualizar)
     meses = sorted(s.valores, reverse=True)[:240]
     return {"nome": nome, "origem": s.origem, "atualizado_em": s.atualizado_em, "ultimo_mes": s.ultimo_mes,
-            "acumulo": SERIES[nome].acumulo, "valores": [{"mes": m, "indice": str(s.valores[m])} for m in meses]}
+            "acumulo": SERIES[nome].acumulo, "unidade": SERIES[nome].unidade, "valores": [{"mes": m, "indice": str(s.valores[m])} for m in meses]}
 
 
 @app.get("/")

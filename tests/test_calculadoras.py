@@ -258,3 +258,62 @@ def test_taxa_legal_antes_da_vigencia_avisa():
     r = rodar(taxa_legal, valor="1000", data_base="2024-01-10", data_calculo="2024-06-10")
     assert any("anterior a 30/08/2024" in a for a in r["avisos"])
     assert not any(k["rotulo"] == "Juros – Taxa Legal" and Decimal(k["valor"]) != 0 for k in r["resumo"])
+
+
+# ------------------------------------------------------------ pensão alimentícia
+from datetime import datetime  # noqa: E402
+
+from app.calculators import pensao  # noqa: E402
+from app.core import indices as _indices  # noqa: E402
+
+
+def test_pensao_parcelas_correcao_e_juros():
+    # série sintética: 1%/mês. Jan: corr 1,01² = 1020,10 + juros 2 meses; Fev: 1010 + 1 mês; Mar: 1000 sem juros
+    r = rodar(pensao, valor_mensal="1000", primeiro_venc="2025-01-10", data_calculo="2025-03-10")
+    assert kpi(r, "Principal") == Decimal("3000.00")
+    assert kpi(r, "Juros de mora") == Decimal("30.50")       # 20,40 + 10,10
+    assert kpi(r, "Total atualizado") == Decimal("3060.60")
+    assert len(r["tabelas"][0]["linhas"]) == 3
+
+
+def test_pensao_vencimento_ajusta_fim_de_mes():
+    r = rodar(pensao, valor_mensal="100", primeiro_venc="2025-01-31", data_calculo="2025-04-30")
+    datas = [l["venc"] for l in r["tabelas"][0]["linhas"]]
+    assert datas == ["2025-01-31", "2025-02-28", "2025-03-31", "2025-04-30"]
+
+
+def test_pensao_sumula_309_separa_prisao_e_expropriatorio():
+    r = rodar(pensao, valor_mensal="100", primeiro_venc="2025-01-10", data_calculo="2025-06-10",
+              data_ajuizamento="2025-05-15")
+    classes = [l["classe"] for l in r["tabelas"][0]["linhas"]]
+    assert classes == ["Expropriatório", "Expropriatório", "Prisão", "Prisão", "Prisão", "Prisão"]
+    assert kpi(r, "Parcelas que autorizam") + kpi(r, "Demais parcelas") == kpi(r, "Total atualizado")
+
+
+def test_pensao_pagamento_nominal_multa_e_honorarios():
+    r = rodar(pensao, valor_mensal="1000", primeiro_venc="2025-03-10", data_calculo="2025-03-10",
+              pagamentos=[{"data": "2025-03-10", "valor": "400"}], abatimento="nominal", multa_523=True, hon_523=True)
+    # 1000 - 400 = 600; multa 60; honorários 60
+    assert kpi(r, "Total atualizado") == Decimal("720.00")
+
+
+def test_pensao_percentual_do_salario_minimo(monkeypatch):
+    def falsa(nome, forcar=False):
+        if nome == "SALARIO_MINIMO":
+            return _indices.Serie(nome, {"2025-01": Decimal("1518.00"), "2025-02": Decimal("1518.00")}, "bcb",
+                                  datetime(2026, 1, 1).strftime("%d/%m/%Y %H:%M"))
+        return _indices.Serie(nome, {}, "bcb", "x")
+    monkeypatch.setattr(_indices, "obter_serie", falsa)
+    r = rodar(pensao, valor_tipo="pct_sm", pct_sm="30", primeiro_venc="2025-01-10", data_calculo="2025-02-10",
+              juros_taxa="0")
+    assert [l["valor"] for l in r["tabelas"][0]["linhas"]] == ["455.40", "455.40"]
+
+
+def test_pensao_criterio_lei_14905_roda():
+    r = rodar(pensao, valor_mensal="1000", primeiro_venc="2025-01-10", data_calculo="2025-03-10", regime="lei14905")
+    assert kpi(r, "Total atualizado") > kpi(r, "Principal")
+
+
+def test_pensao_sem_parcela_vencida_e_erro():
+    with pytest.raises(ErroDeValidacao):
+        rodar(pensao, valor_mensal="100", primeiro_venc="2025-05-10", data_calculo="2025-03-10")
