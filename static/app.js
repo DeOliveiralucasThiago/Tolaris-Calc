@@ -361,6 +361,7 @@ function renderResultado(box, r, calc) {
     el("div", {}, el("h2", {}, r.titulo), el("small", {}, "Emitido em " + new Date(r.gerado_em).toLocaleString("pt-BR"))),
     el("div", { class: "exportar" },
       el("button", { class: "btn btn-sec", type: "button", onclick: () => exportar("pdf") }, "PDF"),
+      el("button", { class: "btn btn-sec", type: "button", onclick: () => exportar("docx") }, "Word"),
       el("button", { class: "btn btn-sec", type: "button", onclick: () => exportar("xlsx") }, "Excel"),
       el("button", { class: "btn btn-sec", type: "button", onclick: copiar }, "Copiar resumo"),
       el("button", { class: "btn btn-sec", type: "button", onclick: () => window.print() }, "Imprimir"))));

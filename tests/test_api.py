@@ -23,6 +23,9 @@ def test_exportacoes(api):
     assert pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
     xlsx = api.post("/api/exportar/xlsx", json=corpo)
     assert xlsx.status_code == 200 and xlsx.content[:2] == b"PK"
+    docx = api.post("/api/exportar/docx", json=corpo)
+    assert docx.status_code == 200 and docx.content[:2] == b"PK"
+    assert docx.headers["content-disposition"].endswith('.docx"')
 
 
 def test_todas_as_calculadoras_geram_pdf(api):
@@ -47,6 +50,7 @@ def test_todas_as_calculadoras_geram_pdf(api):
         assert r.status_code == 200, (slug, r.text)
         assert api.post("/api/exportar/pdf", json={"resultado": r.json()}).content[:4] == b"%PDF", slug
         assert api.post("/api/exportar/xlsx", json={"resultado": r.json()}).content[:2] == b"PK", slug
+        assert api.post("/api/exportar/docx", json={"resultado": r.json()}).content[:2] == b"PK", slug
 
 
 def test_autenticacao_basic_opcional(api, monkeypatch):
@@ -60,3 +64,18 @@ def test_autenticacao_basic_opcional(api, monkeypatch):
     ruim = base64.b64encode(b"escritorio:errada").decode()
     assert api.get("/api/calculadoras", headers={"Authorization": f"Basic {bom}"}).status_code == 200
     assert api.get("/api/calculadoras", headers={"Authorization": f"Basic {ruim}"}).status_code == 401
+
+
+def test_laudo_docx_tem_conteudo_editavel(api):
+    import io
+    from docx import Document
+    res = api.post("/api/calcular/financiamento", json={"parametros": {
+        "valor": "10000", "parcelas": 12, "taxa_contratada": "1", "taxa_revisada": "0.8"}}).json()
+    corpo = {"resultado": res, "identificacao": {"Processo": "123", "Responsável": "Dra. Ana"}}
+    doc = Document(io.BytesIO(api.post("/api/exportar/docx", json=corpo).content))
+    textos = [p.text for p in doc.paragraphs]
+    assert "Financiamento e empréstimo" in textos
+    assert any(t.startswith("2. Resultado") for t in textos) and "Dra. Ana" in " ".join(textos)
+    celulas = [c.text for t in doc.tables for r in t.rows for c in r.cells]
+    assert "123" in celulas and any("R$ 888,49" == c for c in celulas)   # 1ª parcela Price conferida
+    assert len(doc.tables) >= 5                                        # id, parâmetros, resultado e 2 tabelas de memória
