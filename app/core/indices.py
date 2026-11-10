@@ -33,7 +33,7 @@ class DefSerie:
     descricao: str
     acumulo: str = "composto"  # "composto" (produto) ou "soma" (SELIC, prática forense)
     selecionavel: bool = True  # aparece nas listas de índices de correção das calculadoras
-    unidade: str = "%"         # "%" (variação mensal) ou "R$" (valor vigente no mês)
+    unidade: str = "%"         # "%" (variação mensal), "R$" (valor vigente) ou "taxa" (taxa média, % a.m.)
 
 
 # Códigos conferidos diretamente na API do BCB (IPCA-E = SGS 10764, que coincide com o IPCA-15).
@@ -49,6 +49,10 @@ SERIES: dict[str, DefSerie] = {
                            acumulo="soma", selecionavel=False),
     "SALARIO_MINIMO": DefSerie(1619, "SALARIO_MINIMO", "Salário mínimo vigente no mês (R$)", acumulo="soma",
                                selecionavel=False, unidade="R$"),
+    # Taxa média de mercado: operações de crédito com recursos livres, pessoas físicas, cartão rotativo (% a.m.)
+    "TAXA_MEDIA_ROTATIVO": DefSerie(25477, "TAXA_MEDIA_ROTATIVO",
+                                    "Taxa média de mercado – cartão de crédito rotativo, pessoa física (% ao mês)",
+                                    acumulo="soma", selecionavel=False, unidade="taxa"),
 }
 
 _lock = threading.Lock()

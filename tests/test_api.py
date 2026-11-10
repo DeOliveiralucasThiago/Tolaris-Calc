@@ -32,6 +32,8 @@ def test_todas_as_calculadoras_geram_pdf(api):
         "reajuste": {"valor": "1000", "data_reajuste": "2026-01-01"},
         "pensao-alimenticia": {"valor_mensal": "500", "primeiro_venc": "2025-01-10", "data_calculo": "2025-06-10",
                                "data_ajuizamento": "2025-05-01"},
+        "cartao-credito": {"data_inicial": "2025-01-01", "data_final": "2025-04-01", "saldo_inicial": "1500",
+                           "taxa_cobrada": "12", "multa": "2", "mora": "1"},
         "honorarios": {"valor_base": "100000", "exito_pct": "20", "sucumbencia": "fazenda", "sm": "1621",
                        "rateio": [{"nome": "Ana", "pct": "50"}]},
         "taxa-legal": {"valor": "1000", "data_base": "2024-06-01", "data_calculo": "2025-03-10"},
