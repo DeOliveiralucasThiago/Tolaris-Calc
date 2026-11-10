@@ -19,6 +19,7 @@ from .core.campos import converter
 from .core.erros import ErroDeValidacao, IndiceIndisponivel
 from .core.indices import SERIES, obter_serie
 from .reports.exportadores import para_pdf, para_xlsx
+from .reports.laudo_docx import para_docx
 
 log = logging.getLogger("tolaris")
 RAIZ = Path(__file__).resolve().parents[1]
@@ -119,6 +120,13 @@ def exportar_xlsx(e: Exportacao):
     return Response(para_xlsx(e.resultado, e.identificacao),
                     media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="{_nome(e.resultado, "xlsx")}"'})
+
+
+@app.post("/api/exportar/docx")
+def exportar_docx(e: Exportacao):
+    return Response(para_docx(e.resultado, e.identificacao),
+                    media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    headers={"Content-Disposition": f'attachment; filename="{_nome(e.resultado, "docx")}"'})
 
 
 @app.get("/api/indices")

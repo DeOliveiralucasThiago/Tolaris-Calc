@@ -1,6 +1,6 @@
 # Tolaris Calc
 
-Calculadoras jurídicas e financeiras para o escritório, com **memória de cálculo auditável** e exportação em PDF/Excel.
+Calculadoras jurídicas e financeiras para o escritório, com **memória de cálculo auditável** e exportação em PDF, Excel e **laudo em Word (.docx)** editável.
 
 | Calculadora | O que faz |
 |---|---|
@@ -9,6 +9,7 @@ Calculadoras jurídicas e financeiras para o escritório, com **memória de cál
 | **Pensão alimentícia** | Parcelas em atraso (valor fixo ou % do salário mínimo), correção e juros por parcela, pagamentos e Súmula 309/STJ |
 | **Honorários e êxito** | Fixos e êxito, sucumbência do art. 85 do CPC (inclusive escalonada contra a Fazenda), impostos e rateio |
 | **Atualização monetária** | Índice à escolha (IPCA, INPC, IPCA-E, IGP-M, INCC, SELIC), juros, multa, custas e acréscimos do art. 523 |
+| **Cartão de crédito (rotativo)** | Evolução diária do rotativo, multa e mora, limite de 100% (Lei 14.690/2023) e comparação com a taxa média do BCB |
 | **Cheque especial** | Evolução diária do saldo devedor e comparação *taxa cobrada × taxa revisada* |
 | **Financiamento e empréstimo** | Price/SAC, taxa efetivamente embutida na parcela cobrada, revisão e restituição (simples/dobro) |
 | **Reajuste de aluguel/contratos** | Índice acumulado na janela contratual, teto e comparativo entre índices |
@@ -39,7 +40,7 @@ app/
   main.py              API FastAPI + entrega do front-end
   core/                numeros (Decimal), campos (validação), indices (BCB + cache), calendario, resultado
   calculators/         uma calculadora por arquivo: META (campos) + calcular(params) -> Resultado
-  reports/             exportadores PDF e Excel (genéricos, servem a qualquer calculadora)
+  reports/             exportadores PDF e Excel e laudo em Word (genéricos, servem a qualquer calculadora)
 static/                interface (HTML/CSS/JS puro, sem build), formulários gerados a partir de META
 tests/                 resultados conferidos à mão
 ```
