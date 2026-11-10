@@ -30,6 +30,8 @@ def test_todas_as_calculadoras_geram_pdf(api):
         "financiamento": {"valor": "5000", "parcelas": 6, "taxa_contratada": "2", "taxa_revisada": "1"},
         "prazos": {"data": "2025-03-03", "prazo": 10},
         "reajuste": {"valor": "1000", "data_reajuste": "2026-01-01"},
+        "pensao-alimenticia": {"valor_mensal": "500", "primeiro_venc": "2025-01-10", "data_calculo": "2025-06-10",
+                               "data_ajuizamento": "2025-05-01"},
         "taxa-legal": {"valor": "1000", "data_base": "2024-06-01", "data_calculo": "2025-03-10"},
         "debitos-judiciais": {"usa_correcao": True, "usa_juros": True, "principal": "1000", "corr_data": "2024-01-10",
                               "juros_data": "2024-01-10", "data_final": "2025-03-10"},
